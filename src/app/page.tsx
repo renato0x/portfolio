@@ -20,7 +20,7 @@ async function getProjects(): Promise<Repository[]> {
     });
     if (!response.ok) return [];
     const repos = (await response.json()) as Repository[];
-    return repos.filter((repo) => !repo.fork && repo.name.toLowerCase() !== "portfolio").slice(0, 3);
+    return repos.filter((repo) => !repo.fork && !["portfolio", "renato0x"].includes(repo.name.toLowerCase())).slice(0, 3);
   } catch {
     return [];
   }
@@ -119,7 +119,7 @@ export default async function Home() {
         <footer className="footer">
           <a className="wordmark" href="#home"><span className="wordmark-mark">R<span>.</span></span><span>ATÉ A PRÓXIMA ÓRBITA</span></a>
           <span>© 2026 RENATO MONTEIRO</span>
-          <a href="https://github.com/renato0x" target="_blank" rel="noreferrer">MANDE UM SINAL <ArrowUpRight size={13} /></a>
+          <a href="https://github.com/renato0x" target="_blank" rel="noreferrer">ME ENCONTRE NO GITHUB <ArrowUpRight size={13} /></a>
         </footer>
       </div>
     </main>
