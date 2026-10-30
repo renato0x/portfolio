@@ -1,16 +1,22 @@
-# Renato Monteiro — Portfólio
+# Portfólio — Renato Monteiro
 
-Landing page pessoal em Next.js, com projetos públicos do GitHub e painel de atividade musical do Spotify.
+Portfólio pessoal de uma página, feito com Next.js, React, TypeScript, Tailwind CSS e Motion.
 
-## Desenvolvimento
+## Desenvolvimento local
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Spotify
+Abra [http://localhost:3000](http://localhost:3000).
 
-O cartão funciona sem credenciais e mostra um estado de espera. Para exibir a faixa atual ou a última reprodução, configure `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` e `SPOTIFY_REFRESH_TOKEN` no ambiente de produção. O app Spotify precisa do escopo `user-read-currently-playing` e `user-read-recently-played`; os segredos ficam somente no servidor.
+## Verificação e produção
 
-No modo de desenvolvimento do Spotify, a conta proprietária do app precisa ter Premium. Veja os requisitos atuais no [guia de modo de desenvolvimento](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide).
+```bash
+npm run typecheck
+npm run build
+npm start
+```
+
+O site usa a presença do Discord via Lanyard e mantém uma faixa de referência fixa quando não há reprodução ativa. Não requer credenciais locais.
