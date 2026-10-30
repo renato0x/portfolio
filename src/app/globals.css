@@ -19,7 +19,7 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background:
 body { min-height: 100svh; }
 button { font: inherit; }
 
-.ascii-field { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .42; }
+.ascii-field { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .5; }
 .page { height: 100svh; padding: clamp(18px, 3vw, 42px); display: grid; grid-template-rows: auto 1fr; gap: 12px; position: relative; isolation: isolate; }
 .utility { display: flex; justify-content: flex-end; position: relative; z-index: 2; }
 .language-switch { display: flex; align-items: center; gap: 3px; padding: 3px; border: 1px solid #383838; border-radius: 999px; background: #111; }
