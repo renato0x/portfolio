@@ -9,12 +9,18 @@ type SpotifyTokenResponse = {
 
 type SpotifyTrackResponse = {
   is_playing?: boolean;
-  item?: {
-    name?: string;
-    type?: string;
-    artists?: Array<{ name?: string }>;
-    album?: { images?: Array<{ url?: string }> };
-  } | null;
+  item?: SpotifyItem | null;
+};
+
+type SpotifyItem = {
+  name?: string;
+  type?: string;
+  artists?: Array<{ name?: string }>;
+  album?: { images?: Array<{ url?: string }> };
+};
+
+type SpotifyRecentlyPlayedResponse = {
+  items?: Array<{ track?: SpotifyItem | null }>;
 };
 
 type LanyardResponse = {
@@ -71,6 +77,42 @@ async function getDiscordFallback() {
 async function fallbackOrNoContent() {
   const discordTrack = await getDiscordFallback();
   if (discordTrack) return Response.json(discordTrack, { headers: responseHeaders });
+  return noContent();
+}
+
+function trackPayload(item: SpotifyItem | null | undefined, source: "spotify" | "recent") {
+  const artists = item?.artists
+    ?.map((artist) => artist.name)
+    .filter((artist): artist is string => typeof artist === "string");
+  const cover = item?.album?.images?.find(
+    (image) => typeof image.url === "string" && image.url.startsWith("https://"),
+  )?.url;
+
+  if (item?.type !== "track" || typeof item.name !== "string" || !artists?.length || typeof cover !== "string") {
+    return null;
+  }
+
+  return { title: item.name, artist: artists.join(", "), cover, source };
+}
+
+async function recentOrFallback(token: string) {
+  const discordTrack = await getDiscordFallback();
+  if (discordTrack) return Response.json(discordTrack, { headers: responseHeaders });
+
+  try {
+    const response = await fetch("https://api.spotify.com/v1/me/player/recently-played?limit=1", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (response.ok) {
+      const payload = (await response.json()) as SpotifyRecentlyPlayedResponse;
+      const recentTrack = trackPayload(payload.items?.[0]?.track, "recent");
+      if (recentTrack) return Response.json(recentTrack, { headers: responseHeaders });
+    }
+  } catch {
+    // Keep the last browser-cached track when recent history is unavailable.
+  }
+
   return noContent();
 }
 
@@ -153,36 +195,20 @@ export async function GET() {
     return fallbackOrNoContent();
   }
 
-  if (playbackResponse.status === 204) return noContent();
+  if (playbackResponse.status === 204) return recentOrFallback(token);
   if (!playbackResponse.ok) return fallbackOrNoContent();
 
   let playback: SpotifyTrackResponse;
   try {
     playback = (await playbackResponse.json()) as SpotifyTrackResponse;
   } catch {
-    return noContent();
+    return recentOrFallback(token);
   }
 
-  const item = playback.item;
-  const artists = item?.artists
-    ?.map((artist) => artist.name)
-    .filter((artist): artist is string => typeof artist === "string");
-  const cover = item?.album?.images?.find(
-    (image) => typeof image.url === "string" && image.url.startsWith("https://"),
-  )?.url;
-
-  if (
-    playback.is_playing !== true ||
-    item?.type !== "track" ||
-    typeof item.name !== "string" ||
-    !artists?.length ||
-    typeof cover !== "string"
-  ) {
-    return noContent();
+  if (playback.is_playing === true) {
+    const currentTrack = trackPayload(playback.item, "spotify");
+    if (currentTrack) return Response.json(currentTrack, { headers: responseHeaders });
   }
 
-  return Response.json(
-    { title: item.name, artist: artists.join(", "), cover, source: "spotify" },
-    { headers: responseHeaders },
-  );
+  return recentOrFallback(token);
 }

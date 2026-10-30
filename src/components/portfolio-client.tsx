@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties, SyntheticEvent } from "react";
-import { useMotionValue, useSpring } from "motion/react";
+import type { CSSProperties, ReactNode } from "react";
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { EncryptedText } from "@/components/ui/encrypted-text";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 type Language = "pt" | "en";
 type ProjectName = "CashPad" | "Transcrypty" | "SUB-SEEMG";
-type TrackSource = "fallback" | "spotify" | "discord";
+type TrackSource = "spotify" | "discord" | "recent" | "cached";
 
 type Track = {
   title: string;
@@ -21,11 +21,11 @@ type Project = {
   name: ProjectName;
   featured?: boolean;
   fallbackStars: number;
+  fallbackCommits: number;
   meta: Record<Language, string>;
   logo: string;
   href: string;
   description: Record<Language, string>;
-  scope?: Record<Language, string>;
 };
 
 type PageCopy = {
@@ -38,28 +38,29 @@ type PageCopy = {
   projects: string;
   openProject: (name: string) => string;
   githubStars: string;
+  githubCommits: string;
   profile: string;
   socialLinks: string;
   spotify: string;
   noPlayback: string;
+  noRecentTrack: string;
+  noRecentArtist: string;
+  lastPlayed: string;
   listening: string;
   viaDiscord: string;
 };
 
 const languageKey = "renato0x-portfolio-language-v2";
+const lastTrackKey = "renato0x-portfolio-last-track-v1";
 const starsKeyPrefix = "renato0x-github-stars-";
-const fallbackTrack: Track = {
-  title: "heart pt. 6",
-  artist: "Kendrick Lamar",
-  cover: "/assets/music/heart-pt-6.jpg",
-  source: "fallback",
-};
+const commitsKeyPrefix = "renato0x-github-commits-";
 
 const projects: Project[] = [
   {
     name: "SUB-SEEMG",
     featured: true,
     fallbackStars: 0,
+    fallbackCommits: 27,
     meta: { pt: "C#", en: "C#" },
     logo: "/assets/projects/SUB-SEEMG.png",
     href: "https://github.com/renato0x/SUB-SEEMG",
@@ -67,14 +68,11 @@ const projects: Project[] = [
       pt: "Desenvolvimento do sistema bibliotecário oficial do Estado de Minas Gerais.",
       en: "Development of the official library system for the State of Minas Gerais.",
     },
-    scope: {
-      pt: "Acervo · turmas · circulação · relatórios",
-      en: "Catalog · classes · circulation · reports",
-    },
   },
   {
     name: "CashPad",
     fallbackStars: 1,
+    fallbackCommits: 28,
     meta: { pt: "JavaScript", en: "JavaScript" },
     logo: "/assets/projects/CashPad.svg",
     href: "https://github.com/renato0x/CashPad",
@@ -86,6 +84,7 @@ const projects: Project[] = [
   {
     name: "Transcrypty",
     fallbackStars: 3,
+    fallbackCommits: 14,
     meta: { pt: "Python", en: "Python" },
     logo: "/assets/projects/Transcrypty.bmp",
     href: "https://github.com/renato0x/Transcrypty",
@@ -107,10 +106,14 @@ const copy: Record<Language, PageCopy> = {
     projects: "Projetos",
     openProject: (name: string) => `Abrir o repositório ${name} no GitHub`,
     githubStars: "Estrelas no GitHub",
+    githubCommits: "commits de Renato no GitHub",
     profile: "Perfil",
     socialLinks: "Redes sociais",
     spotify: "Spotify",
-    noPlayback: "sem reprodução",
+    noPlayback: "inativa",
+    noRecentTrack: "Nenhuma faixa recente",
+    noRecentArtist: "A próxima reprodução aparecerá aqui",
+    lastPlayed: "ouvida por último",
     listening: "agora",
     viaDiscord: "via Discord",
   },
@@ -124,14 +127,80 @@ const copy: Record<Language, PageCopy> = {
     projects: "Projects",
     openProject: (name: string) => `Open the ${name} repository on GitHub`,
     githubStars: "GitHub stars",
+    githubCommits: "commits authored by Renato",
     profile: "Profile",
     socialLinks: "Social links",
     spotify: "Spotify",
-    noPlayback: "not playing",
+    noPlayback: "idle",
+    noRecentTrack: "No recent track",
+    noRecentArtist: "Your next play will appear here",
+    lastPlayed: "last played",
     listening: "now",
     viaDiscord: "via Discord",
   },
 };
+
+function LocaleSwap({
+  token,
+  children,
+  className = "",
+  block = false,
+  delay = 0,
+  ready,
+  ariaHidden = false,
+}: {
+  token: string;
+  children: ReactNode;
+  className?: string;
+  block?: boolean;
+  delay?: number;
+  ready: boolean;
+  ariaHidden?: boolean;
+}) {
+  const reduceMotion = useReducedMotion();
+  const slotClass = `locale-slot${block ? " locale-slot--block" : ""}${className ? ` ${className}` : ""}`;
+  const textClass = `locale-swap${block ? " locale-swap--block" : ""}`;
+
+  if (!ready || reduceMotion) {
+    return <span className={slotClass} aria-hidden={ariaHidden || undefined}>{children}</span>;
+  }
+
+  return (
+    <motion.span
+      layout
+      className={slotClass}
+      aria-hidden={ariaHidden || undefined}
+      transition={{ layout: { duration: 0.24, ease: [0.22, 1, 0.36, 1] } }}
+    >
+      <AnimatePresence initial={false} mode="wait">
+        <motion.span
+          key={token}
+          className={textClass}
+          initial={{ opacity: 0, x: -5, clipPath: "inset(0 100% 0 0)" }}
+          animate={{ opacity: 1, x: 0, clipPath: "inset(0 0% 0 0)" }}
+          exit={{
+            opacity: 0,
+            x: 4,
+            clipPath: "inset(0 0 0 100%)",
+            transition: { duration: 0.14, ease: [0.4, 0, 1, 1] },
+          }}
+          transition={{ duration: 0.32, delay, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {children}
+          <motion.span
+            className="locale-ascii-trace"
+            aria-hidden="true"
+            initial={{ opacity: 0, scaleX: 0.25 }}
+            animate={{ opacity: [0, 0.78, 0], scaleX: [0.25, 1, 0.4] }}
+            transition={{ duration: 0.44, delay: delay + 0.04, ease: "easeOut" }}
+          >
+            .:=+*#@
+          </motion.span>
+        </motion.span>
+      </AnimatePresence>
+    </motion.span>
+  );
+}
 
 const stackItems = [
   ["Next.js", "/assets/stack/nextdotjs.svg"],
@@ -147,6 +216,66 @@ const stackItems = [
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function readCachedTrack(): Track | null {
+  try {
+    const raw = window.localStorage.getItem(lastTrackKey);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (
+      !isRecord(value) ||
+      typeof value.title !== "string" ||
+      typeof value.artist !== "string" ||
+      typeof value.cover !== "string" ||
+      !value.cover.startsWith("https:")
+    ) {
+      return null;
+    }
+    return { title: value.title, artist: value.artist, cover: value.cover, source: "cached" };
+  } catch {
+    return null;
+  }
+}
+
+function getLinkUrl(linkHeader: string | null, relation: "last" | "next") {
+  const match = linkHeader?.match(new RegExp(`<([^>]+)>;\\s*rel="${relation}"`, "i"));
+  return match?.[1] ?? null;
+}
+
+async function getAuthorCommitCount(projectName: ProjectName, signal: AbortSignal) {
+  const firstPage = new URL(`https://api.github.com/repos/renato0x/${encodeURIComponent(projectName)}/commits`);
+  firstPage.searchParams.set("author", "renato0x");
+  firstPage.searchParams.set("per_page", "1");
+  const headers = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+
+  const response = await fetch(firstPage, { headers, signal });
+  if (!response.ok) throw new Error("GitHub commit count unavailable");
+
+  const payload: unknown = await response.json();
+  if (!Array.isArray(payload)) throw new Error("Unexpected GitHub commit response");
+
+  const lastPage = getLinkUrl(response.headers.get("Link"), "last");
+  if (lastPage) {
+    const count = Number(new URL(lastPage).searchParams.get("page"));
+    if (Number.isSafeInteger(count) && count >= 0) return count;
+    throw new Error("Invalid GitHub pagination link");
+  }
+
+  let count = payload.length;
+  let nextPage = getLinkUrl(response.headers.get("Link"), "next");
+  while (nextPage) {
+    const nextResponse = await fetch(nextPage, { headers, signal });
+    if (!nextResponse.ok) throw new Error("GitHub commit count unavailable");
+
+    const nextPayload: unknown = await nextResponse.json();
+    if (!Array.isArray(nextPayload)) throw new Error("Unexpected GitHub commit response");
+
+    count += nextPayload.length;
+    nextPage = getLinkUrl(nextResponse.headers.get("Link"), "next");
+  }
+
+  return count;
 }
 
 function AsciiField() {
@@ -465,12 +594,19 @@ function AsciiField() {
 
 export default function PortfolioClient() {
   const [language, setLanguage] = useState<Language>("en");
+  const [localeMotionReady, setLocaleMotionReady] = useState(false);
+  const reduceMotion = useReducedMotion();
   const [stars, setStars] = useState<Record<ProjectName, number>>({
     CashPad: 1,
     Transcrypty: 3,
     "SUB-SEEMG": 0,
   });
-  const [track, setTrack] = useState<Track>(fallbackTrack);
+  const [commits, setCommits] = useState<Record<ProjectName, number>>({
+    CashPad: 28,
+    Transcrypty: 14,
+    "SUB-SEEMG": 27,
+  });
+  const [track, setTrack] = useState<Track | null>(null);
   const [failedCover, setFailedCover] = useState<string | null>(null);
   const currentCopy = copy[language];
 
@@ -479,9 +615,12 @@ export default function PortfolioClient() {
       const saved = window.localStorage.getItem(languageKey);
       if (saved === "en" || saved === "pt") setLanguage(saved);
       window.localStorage.removeItem(`${starsKeyPrefix}DevlStreak`);
+      setTrack(readCachedTrack());
     } catch {
       // The page keeps its English default when browser storage is unavailable.
     }
+    const frame = window.requestAnimationFrame(() => setLocaleMotionReady(true));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
@@ -494,10 +633,21 @@ export default function PortfolioClient() {
 
     for (const project of projects) {
       const storageKey = `${starsKeyPrefix}${project.name}`;
+      const commitStorageKey = `${commitsKeyPrefix}${project.name}`;
       try {
         const cached = window.localStorage.getItem(storageKey);
         if (cached !== null && Number.isInteger(Number(cached))) {
           setStars((current) => ({ ...current, [project.name]: Number(cached) }));
+        }
+      } catch {
+        // Live requests and fallback counts continue without local storage.
+      }
+
+      try {
+        const cached = window.localStorage.getItem(commitStorageKey);
+        const count = Number(cached);
+        if (cached !== null && Number.isSafeInteger(count) && count >= 0) {
+          setCommits((current) => ({ ...current, [project.name]: count }));
         }
       } catch {
         // Live requests and fallback counts continue without local storage.
@@ -524,6 +674,20 @@ export default function PortfolioClient() {
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError") return;
         });
+
+      getAuthorCommitCount(project.name, controller.signal)
+        .then((count) => {
+          if (!Number.isSafeInteger(count) || count < 0) return;
+          setCommits((current) => ({ ...current, [project.name]: count }));
+          try {
+            window.localStorage.setItem(commitStorageKey, String(count));
+          } catch {
+            // The live count remains visible for this session.
+          }
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+        });
     }
 
     return () => controller.abort();
@@ -543,7 +707,7 @@ export default function PortfolioClient() {
 
         if (!active) return;
         if (response.status === 204 || !response.ok) {
-          setTrack(fallbackTrack);
+          setTrack((current) => current ? { ...current, source: "cached" } : null);
           return;
         }
 
@@ -554,21 +718,31 @@ export default function PortfolioClient() {
           typeof value.artist !== "string" ||
           typeof value.cover !== "string" ||
           !value.cover.startsWith("https:") ||
-          (value.source !== "spotify" && value.source !== "discord")
+          (value.source !== "spotify" && value.source !== "discord" && value.source !== "recent")
         ) {
-          setTrack(fallbackTrack);
+          setTrack((current) => current ? { ...current, source: "cached" } : null);
           return;
         }
 
-        setTrack({
+        const nextTrack: Track = {
           title: value.title,
           artist: value.artist,
           cover: value.cover,
           source: value.source,
-        });
+        };
+        setTrack(nextTrack);
+        try {
+          window.localStorage.setItem(lastTrackKey, JSON.stringify({
+            title: nextTrack.title,
+            artist: nextTrack.artist,
+            cover: nextTrack.cover,
+          }));
+        } catch {
+          // The live or recently played result remains visible for this session.
+        }
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        if (active) setTrack(fallbackTrack);
+        if (active) setTrack((current) => current ? { ...current, source: "cached" } : null);
       } finally {
         if (active) timeout = window.setTimeout(refreshTrack, 15_000);
       }
@@ -583,6 +757,7 @@ export default function PortfolioClient() {
   }, []);
 
   const changeLanguage = (nextLanguage: Language) => {
+    if (nextLanguage === language) return;
     setLanguage(nextLanguage);
     try {
       window.localStorage.setItem(languageKey, nextLanguage);
@@ -591,13 +766,8 @@ export default function PortfolioClient() {
     }
   };
 
-  const handleCoverError = (event: SyntheticEvent<HTMLImageElement>) => {
-    const image = event.currentTarget;
-    if (image.getAttribute("src") === fallbackTrack.cover) {
-      image.onerror = null;
-      return;
-    }
-    setFailedCover(track.cover);
+  const handleCoverError = () => {
+    if (track) setFailedCover(track.cover);
   };
 
   const projectsLabel = currentCopy.projects;
@@ -605,18 +775,25 @@ export default function PortfolioClient() {
   const technologiesLabel = currentCopy.technologies;
   const profileLabel = currentCopy.profile;
   const socialLinksLabel = currentCopy.socialLinks;
+  const isPlaying = track?.source === "spotify" || track?.source === "discord";
 
   return (
     <>
       <AsciiField />
-      <main className="page">
+      <main className="page page-intro">
         <header className="utility">
           <div className="language-switch" role="group" aria-label={language === "pt" ? "Idioma" : "Language"}>
             <button type="button" onClick={() => changeLanguage("pt")} aria-pressed={language === "pt"}>
-              PT
+              {language === "pt" && (localeMotionReady
+                ? <motion.span layoutId="language-indicator" className="language-indicator" transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 38 }} />
+                : <span className="language-indicator" />)}
+              <span className="language-code">PT</span>
             </button>
             <button type="button" onClick={() => changeLanguage("en")} aria-pressed={language === "en"}>
-              EN
+              {language === "en" && (localeMotionReady
+                ? <motion.span layoutId="language-indicator" className="language-indicator" transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 38 }} />
+                : <span className="language-indicator" />)}
+              <span className="language-code">EN</span>
             </button>
           </div>
         </header>
@@ -625,10 +802,12 @@ export default function PortfolioClient() {
           <section className="main-column" aria-label={currentCopy.content}>
             <h1 className="sr-only">Renato Monteiro</h1>
             <section className="bio-block" aria-label={aboutLabel}>
-              <p>{currentCopy.bio}</p>
+              <span className="entry-ascii" aria-hidden="true">.:=+*#@</span>
+              <p><LocaleSwap token={`bio-${language}`} block delay={0} ready={localeMotionReady}>{currentCopy.bio}</LocaleSwap></p>
             </section>
 
             <section className="stacks" aria-label={technologiesLabel}>
+              <span className="entry-ascii entry-ascii--stacks" aria-hidden="true">.:=+*#@</span>
               <ul className="stack-row" role="list" aria-label={currentCopy.technologyList}>
                 {stackItems.map(([name, image]) => (
                   <li className="stack-item" title={name} aria-label={name} key={name}>
@@ -636,12 +815,13 @@ export default function PortfolioClient() {
                   </li>
                 ))}
               </ul>
-              <span className="stack-caption" aria-hidden="true">
+              <LocaleSwap token={`caption-${language}`} className="stack-caption" delay={0.07} ready={localeMotionReady} ariaHidden>
                 {language === "pt" ? "> projetos" : "> projects"}
-              </span>
+              </LocaleSwap>
             </section>
 
             <section className="projects" aria-labelledby="projects-title">
+              <span className="entry-ascii entry-ascii--projects" aria-hidden="true">.:=+*#@</span>
               <h2 className="sr-only" id="projects-title">{projectsLabel}</h2>
               <div className="project-grid">
                 {projects.map((project, index) => (
@@ -652,7 +832,7 @@ export default function PortfolioClient() {
                     href={project.href}
                     target="_blank"
                     rel="noreferrer"
-                    aria-label={`${project.name}. ${project.description[language]}${project.scope ? `. ${project.scope[language]}` : ""}. ${currentCopy.openProject(project.name)}`}
+                    aria-label={`${project.name}. ${project.description[language]}. ${commits[project.name] ?? project.fallbackCommits} ${currentCopy.githubCommits}. ${currentCopy.openProject(project.name)}`}
                     key={project.name}
                   >
                     <div className="project-top">
@@ -661,8 +841,7 @@ export default function PortfolioClient() {
                     </div>
                     <div className="project-copy">
                       <h3>{project.name}</h3>
-                      <p>{project.description[language]}</p>
-                      {project.scope && <span className="project-scope">{project.scope[language]}</span>}
+                      <p><LocaleSwap token={`${project.name}-${language}`} block delay={0.12 + index * 0.055} ready={localeMotionReady}>{project.description[language]}</LocaleSwap></p>
                     </div>
                     <div className="project-meta">
                       <span className="language">
@@ -675,6 +854,18 @@ export default function PortfolioClient() {
                         </svg>
                         <b aria-live="polite">{stars[project.name] ?? project.fallbackStars}</b>
                       </span>
+                      <span
+                        className="commit-count"
+                        role="img"
+                        title={currentCopy.githubCommits}
+                        aria-label={`${commits[project.name] ?? project.fallbackCommits} ${currentCopy.githubCommits}`}
+                      >
+                        <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                          <path d="M3 12h6m6 0h6" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        <b aria-live="polite">{commits[project.name] ?? project.fallbackCommits}</b>
+                      </span>
                     </div>
                   </SpotlightCard>
                 ))}
@@ -683,6 +874,7 @@ export default function PortfolioClient() {
           </section>
 
           <aside className="profile-column" aria-label={profileLabel}>
+            <span className="entry-ascii entry-ascii--profile" aria-hidden="true">.:=+*#@</span>
             <div className="profile-head">
               <img
                 className="avatar"
@@ -701,8 +893,9 @@ export default function PortfolioClient() {
                   flipDelayMs={50}
                 />
                 <p className="profile-role">
-                  <span>{language === "pt" ? "Desenvolvedor de software ·" : "Software developer ·"}</span>
-                  <span>{language === "pt" ? "ADS, IFNMG" : "Systems Analysis, IFNMG"}</span>
+                  <LocaleSwap token={`role-${language}`} delay={0.05} ready={localeMotionReady}>
+                    {language === "pt" ? "Desenvolvedor de software · ADS, IFNMG" : "Software developer · Systems Analysis, IFNMG"}
+                  </LocaleSwap>
                 </p>
               </div>
             </div>
@@ -722,19 +915,14 @@ export default function PortfolioClient() {
               </a>
             </nav>
 
-            <SpotlightCard as="section" className="music-card" aria-label={currentCopy.spotify} data-source={track.source}>
+            <SpotlightCard as="section" className="music-card" aria-label={currentCopy.spotify} data-source={track?.source ?? "empty"} data-playing={isPlaying}>
               <span className="music-wave" aria-hidden="true">
                 <i /><i /><i /><i /><i /><i /><i /><i /><i />
               </span>
               <div className="music-art">
-                <img
-                  className="music-cover"
-                  src={failedCover === track.cover ? fallbackTrack.cover : track.cover}
-                  alt=""
-                  width="54"
-                  height="54"
-                  onError={handleCoverError}
-                />
+                {track && failedCover !== track.cover
+                  ? <img className="music-cover" src={track.cover} alt="" width="54" height="54" onError={handleCoverError} />
+                  : <div className="music-art-empty" aria-hidden="true" />}
               </div>
               <div className="music-info" aria-live="polite">
                 <div className="music-heading">
@@ -742,31 +930,25 @@ export default function PortfolioClient() {
                     <img className="spotify-mark" src="/assets/social/spotify.svg" alt="" width="13" height="13" />
                     <span>Spotify</span>
                   </span>
-                  <span className="music-state">
-                    {track.source === "spotify"
+                  <LocaleSwap token={`music-state-${language}-${track?.source ?? "empty"}`} className="music-state" delay={0.16} ready={localeMotionReady}>
+                    {track?.source === "spotify"
                       ? currentCopy.listening
-                      : track.source === "discord"
+                      : track?.source === "discord"
                         ? currentCopy.viaDiscord
-                        : currentCopy.noPlayback}
-                  </span>
+                        : track
+                          ? currentCopy.lastPlayed
+                          : currentCopy.noPlayback}
+                  </LocaleSwap>
                 </div>
                 <h2 className="music-title">
-                  <EncryptedText
-                    text={track.title}
-                    encryptedClassName="text-neutral-500"
-                    revealDelayMs={32}
-                    flipDelayMs={28}
-                    glitchIntervalMs={0}
-                  />
+                  {track
+                    ? <EncryptedText text={track.title} encryptedClassName="text-neutral-500" revealDelayMs={32} flipDelayMs={28} glitchIntervalMs={0} />
+                    : currentCopy.noRecentTrack}
                 </h2>
                 <p className="music-artist">
-                  <EncryptedText
-                    text={track.artist}
-                    encryptedClassName="text-neutral-500"
-                    revealDelayMs={32}
-                    flipDelayMs={28}
-                    glitchIntervalMs={0}
-                  />
+                  {track
+                    ? <EncryptedText text={track.artist} encryptedClassName="text-neutral-500" revealDelayMs={32} flipDelayMs={28} glitchIntervalMs={0} />
+                    : currentCopy.noRecentArtist}
                 </p>
               </div>
             </SpotlightCard>

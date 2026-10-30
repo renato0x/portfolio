@@ -6,8 +6,9 @@ import { spawnSync } from "node:child_process";
 
 const clientId =
   process.env.SPOTIFY_CLIENT_ID ?? "e3ad677a16e34d838cd3275200d03557";
-const redirectUri = "http://127.0.0.1:3000/callback";
-const scopes = "user-read-currently-playing";
+const callbackPort = 8888;
+const redirectUri = `http://127.0.0.1:${callbackPort}/callback`;
+const scopes = "user-read-currently-playing user-read-recently-played";
 const verifier = randomBytes(64).toString("base64url");
 const challenge = createHash("sha256").update(verifier).digest("base64url");
 const state = randomBytes(24).toString("hex");
@@ -148,8 +149,8 @@ server.on("error", (error) => {
   process.exitCode = 1;
 });
 
-server.listen(3000, "127.0.0.1", () => {
-  console.log("Listening for Spotify's secure callback at http://127.0.0.1:3000/callback");
+server.listen(callbackPort, "127.0.0.1", () => {
+  console.log(`Listening for Spotify's secure callback at ${redirectUri}`);
   console.log("Open this URL to authorize the portfolio account:");
   console.log(authorizationUrl.toString());
 });

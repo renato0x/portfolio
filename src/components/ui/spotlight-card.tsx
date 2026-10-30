@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type {
   AnchorHTMLAttributes,
+  FocusEvent as ReactFocusEvent,
   HTMLAttributes,
-  PointerEvent as ReactPointerEvent,
   ReactNode,
 } from "react";
 
@@ -22,35 +23,95 @@ type SpotlightSectionProps = SpotlightCardBaseProps &
 
 type SpotlightCardProps = SpotlightAnchorProps | SpotlightSectionProps;
 
-function updateSpotlight(event: ReactPointerEvent<HTMLElement>) {
-  if (
-    (event.pointerType !== "mouse" && event.pointerType !== "pen") ||
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  ) {
-    return;
-  }
-
-  const bounds = event.currentTarget.getBoundingClientRect();
-  event.currentTarget.style.setProperty("--spotlight-x", `${event.clientX - bounds.left}px`);
-  event.currentTarget.style.setProperty("--spotlight-y", `${event.clientY - bounds.top}px`);
-}
-
-function resetSpotlight(event: ReactPointerEvent<HTMLElement>) {
-  event.currentTarget.style.removeProperty("--spotlight-x");
-  event.currentTarget.style.removeProperty("--spotlight-y");
-}
-
 export function SpotlightCard(props: SpotlightCardProps) {
+  const cardRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    const isFocused = () => card.matches(":focus-within");
+    const setActive = (active: boolean) => {
+      card.dataset.spotlightActive = String(active);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+
+      const bounds = card.getBoundingClientRect();
+      const closestX = Math.max(bounds.left, Math.min(event.clientX, bounds.right));
+      const closestY = Math.max(bounds.top, Math.min(event.clientY, bounds.bottom));
+      const distance = Math.hypot(event.clientX - closestX, event.clientY - closestY);
+      const near = distance <= 24;
+      card.dataset.spotlightPointerNear = String(near);
+
+      if (near) {
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          card.style.setProperty("--spotlight-x", `${closestX - bounds.left}px`);
+          card.style.setProperty("--spotlight-y", `${closestY - bounds.top}px`);
+        }
+        setActive(true);
+      } else if (!isFocused()) {
+        setActive(false);
+      }
+    };
+
+    const handleWindowLeave = (event: PointerEvent) => {
+      if (event.relatedTarget !== null) return;
+      card.dataset.spotlightPointerNear = "false";
+      if (!isFocused()) setActive(false);
+    };
+
+    const handleWindowBlur = () => {
+      card.dataset.spotlightPointerNear = "false";
+      if (!isFocused()) setActive(false);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("pointerleave", handleWindowLeave);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerleave", handleWindowLeave);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, []);
+
+  const setCardRef = (node: HTMLElement | null) => {
+    cardRef.current = node;
+  };
+
+  const handleFocus = (event: ReactFocusEvent<HTMLElement>) => {
+    const card = event.currentTarget;
+    card.dataset.spotlightFocused = "true";
+    if (!card.style.getPropertyValue("--spotlight-x")) {
+      card.style.setProperty("--spotlight-x", `${card.clientWidth / 2}px`);
+      card.style.setProperty("--spotlight-y", `${card.clientHeight / 2}px`);
+    }
+    card.dataset.spotlightActive = "true";
+  };
+
+  const handleBlur = (event: ReactFocusEvent<HTMLElement>) => {
+    const card = event.currentTarget;
+    if (card.contains(event.relatedTarget as Node | null)) return;
+    delete card.dataset.spotlightFocused;
+    if (card.dataset.spotlightPointerNear !== "true") {
+      card.dataset.spotlightActive = "false";
+    }
+  };
+
   if (props.as === "a") {
     const { as, className, children, ...anchorProps } = props;
 
     return (
       <a
         {...anchorProps}
+        ref={setCardRef}
         className={`spotlight-card${className ? ` ${className}` : ""}`}
         data-spotlight-card=""
-        onPointerMove={updateSpotlight}
-        onPointerLeave={resetSpotlight}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       >
         {children}
       </a>
@@ -62,10 +123,11 @@ export function SpotlightCard(props: SpotlightCardProps) {
   return (
     <section
       {...sectionProps}
+      ref={setCardRef}
       className={`spotlight-card${className ? ` ${className}` : ""}`}
       data-spotlight-card=""
-      onPointerMove={updateSpotlight}
-      onPointerLeave={resetSpotlight}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
     >
       {children}
     </section>
