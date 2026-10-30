@@ -43,7 +43,7 @@ type PageCopy = {
   viaDiscord: string;
 };
 
-const languageKey = "renato0x-portfolio-language";
+const languageKey = "renato0x-portfolio-language-v2";
 const starsKeyPrefix = "renato0x-github-stars-";
 const fallbackTrack: Track = {
   title: "heart pt. 6",
@@ -362,7 +362,7 @@ function AsciiField() {
 }
 
 export default function PortfolioClient() {
-  const [language, setLanguage] = useState<Language>("pt");
+  const [language, setLanguage] = useState<Language>("en");
   const [stars, setStars] = useState<Record<ProjectName, number>>({
     CashPad: 1,
     Transcrypty: 3,
@@ -378,7 +378,7 @@ export default function PortfolioClient() {
       if (saved === "en" || saved === "pt") setLanguage(saved);
       window.localStorage.removeItem(`${starsKeyPrefix}DevlStreak`);
     } catch {
-      // The page keeps its Portuguese defaults when browser storage is unavailable.
+      // The page keeps its English default when browser storage is unavailable.
     }
   }, []);
 
