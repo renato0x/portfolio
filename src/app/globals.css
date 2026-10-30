@@ -225,6 +225,7 @@ button { font: inherit; }
   .profile-column { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 0 0 14px; border-right: 0; border-bottom: 1px solid #303030; border-top: 0; }
   .profile-head { grid-column: 1 / -1; gap: 8px; }
   .avatar-preview-trigger { width: 40px; height: 40px; }
+  .profile-photo-preview { pointer-events: auto; }
   .avatar { width: 40px; height: 40px; }
   .profile-name { font-size: 16px; margin-bottom: 2px; }
   .profile-name-wrap { margin-bottom: 2px; }

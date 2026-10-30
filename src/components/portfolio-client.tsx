@@ -632,12 +632,12 @@ function ProfilePhotoHoverPreview({ src, label }: { src: string; label: string }
     const margin = 12;
     const gap = isCompact ? 8 : 16;
     const profileBounds = triggerRef.current?.closest(".profile-head")?.getBoundingClientRect();
-    let size = 108;
+    let size = 120;
     let left = pointX + gap;
     let top = pointY - size - 42;
 
     if (isCompact) {
-      size = Math.min(240, window.innerWidth - margin * 2);
+      size = Math.min(280, window.innerWidth - margin * 2, window.innerHeight - margin * 2);
       left = (window.innerWidth - size) / 2;
       top = (profileBounds?.bottom ?? pointY) + 12;
     }
