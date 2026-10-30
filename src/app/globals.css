@@ -39,13 +39,13 @@ button { font: inherit; }
 .stack-item img { width: 18px; height: 18px; object-fit: contain; filter: brightness(0) invert(1); opacity: .9; }
 .projects { min-width: 0; animation: rise .5s .14s both; }
 .project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.project-card { min-height: 124px; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 11px 12px; background: linear-gradient(140deg, rgb(255 255 255 / .075), transparent 48%), rgb(13 13 13 / .48); border: 1px solid rgb(255 255 255 / .2); border-radius: 10px; color: inherit; text-decoration: none; position: relative; overflow: hidden; -webkit-backdrop-filter: blur(24px) saturate(145%); backdrop-filter: blur(24px) saturate(145%); transition: transform .28s cubic-bezier(.2, .8, .2, 1), opacity .28s ease, filter .28s ease, border-color .28s ease, background-color .28s ease; animation: rise .52s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--n) * 95ms); }
-.project-card:focus-visible { z-index: 1; transform: translateY(-2px) scale(1.015); border-color: rgb(255 255 255 / .58); background-color: rgb(30 30 30 / .7); }
-.project-card:active { transform: scale(.99); }
+.project-card { min-height: 124px; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 11px 12px; background: linear-gradient(140deg, rgb(255 255 255 / .075), transparent 48%), rgb(13 13 13 / .48); border: 1px solid rgb(255 255 255 / .2); border-radius: 10px; color: inherit; text-decoration: none; position: relative; overflow: hidden; -webkit-backdrop-filter: blur(24px) saturate(145%); backdrop-filter: blur(24px) saturate(145%); transition: transform .46s cubic-bezier(.16, 1, .3, 1), border-color .42s ease, background-color .42s ease; animation: rise .52s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--n) * 95ms); }
+.project-card:hover, .project-card:focus-visible { transform: translateY(-1px); border-color: rgb(255 255 255 / .38); background-color: rgb(28 28 28 / .62); }
+.project-card:active { transform: scale(.998); }
 .project-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .project-mark { width: 34px; height: 34px; object-fit: contain; border-radius: 6px; }
-.project-open { font: 20px/1 var(--sans); color: #e7e7e7; transition: transform .28s cubic-bezier(.2, .8, .2, 1); }
-.project-card:focus-visible .project-open { transform: translate(2px, -2px) scale(1.04); }
+.project-open { font: 20px/1 var(--sans); color: #e7e7e7; transition: transform .4s cubic-bezier(.16, 1, .3, 1); }
+.project-card:hover .project-open { transform: translate(1px, -1px); }
 .project-card h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 560; letter-spacing: -.02em; margin: 0 0 3px; }
 .project-card p { font-size: 10px; line-height: 1.38; color: var(--muted); margin: 0; max-width: 42ch; }
 .project-meta { display: flex; align-items: center; gap: 12px; font: 9px var(--mono); color: #c8c8c8; }
@@ -96,18 +96,14 @@ button { font: inherit; }
   .language-switch button:hover { color: #fff; transform: translateY(-1px) scale(1.04); }
   .language-switch button[aria-pressed="true"]:hover { color: #090909; }
   .stack-item:hover { z-index: 1; transform: translateY(-2px) scale(1.08); border-color: #b8b8b8; background: #232323; }
-  .project-card:hover { z-index: 1; transform: translateY(-2px) scale(1.015); border-color: rgb(255 255 255 / .58); background-color: rgb(30 30 30 / .7); }
-  .project-card:hover .project-open { transform: translate(2px, -2px) scale(1.04); }
   .socials a:hover { z-index: 1; transform: translateY(-2px) scale(1.08); border-color: #b8b8b8; background: #242424; }
   .music-card:hover { transform: translateY(-1px) scale(1.01); border-color: rgb(255 255 255 / .52); background-color: rgb(28 28 28 / .72); }
 }
 
-@supports selector(.project-grid:has(> .project-card:hover)) {
-  .project-grid:has(> .project-card:focus-visible) > .project-card:not(:focus-visible) { opacity: .56; filter: blur(.75px); transform: scale(.99); }
+@supports selector(.socials:has(> a:hover)) {
   .socials:has(> a:focus-visible) > a:not(:focus-visible) { opacity: .56; filter: blur(.35px); transform: scale(.97); }
 
   @media (any-hover: hover) and (any-pointer: fine) {
-    .project-grid:has(> .project-card:hover) > .project-card:not(:hover) { opacity: .56; filter: blur(.75px); transform: scale(.99); }
     .socials:has(> a:hover) > a:not(:hover) { opacity: .56; filter: blur(.35px); transform: scale(.97); }
     .stack-row:has(> .stack-item:hover) > .stack-item:not(:hover) { opacity: .54; filter: blur(.35px); transform: scale(.95); }
   }
