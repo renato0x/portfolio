@@ -39,7 +39,7 @@ let accessTokenExpiresAt = 0;
 let refreshToken = process.env.SPOTIFY_REFRESH_TOKEN ?? "";
 
 const responseHeaders = {
-  "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
+  "Cache-Control": "public, s-maxage=5, must-revalidate",
 };
 
 async function getDiscordFallback() {
@@ -96,9 +96,6 @@ function trackPayload(item: SpotifyItem | null | undefined, source: "spotify" | 
 }
 
 async function recentOrFallback(token: string) {
-  const discordTrack = await getDiscordFallback();
-  if (discordTrack) return Response.json(discordTrack, { headers: responseHeaders });
-
   try {
     const response = await fetch("https://api.spotify.com/v1/me/player/recently-played?limit=1", {
       headers: { Authorization: `Bearer ${token}` },
@@ -110,8 +107,11 @@ async function recentOrFallback(token: string) {
       if (recentTrack) return Response.json(recentTrack, { headers: responseHeaders });
     }
   } catch {
-    // Keep the last browser-cached track when recent history is unavailable.
+    // Try Discord presence if Spotify's recent history is unavailable.
   }
+
+  const discordTrack = await getDiscordFallback();
+  if (discordTrack) return Response.json(discordTrack, { headers: responseHeaders });
 
   return noContent();
 }
