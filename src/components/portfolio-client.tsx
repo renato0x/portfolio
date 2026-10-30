@@ -5,7 +5,7 @@ import type { CSSProperties, SyntheticEvent } from "react";
 import { EncryptedText } from "@/components/ui/encrypted-text";
 
 type Language = "pt" | "en";
-type ProjectName = "CashPad" | "Transcrypty";
+type ProjectName = "CashPad" | "Transcrypty" | "SUB-SEEMG";
 type TrackSource = "fallback" | "spotify" | "discord";
 
 type Track = {
@@ -18,7 +18,7 @@ type Track = {
 type Project = {
   name: ProjectName;
   fallbackStars: number;
-  language: string;
+  meta: Record<Language, string>;
   logo: string;
   href: string;
   description: Record<Language, string>;
@@ -55,7 +55,7 @@ const projects: Project[] = [
   {
     name: "CashPad",
     fallbackStars: 1,
-    language: "JavaScript",
+    meta: { pt: "JavaScript", en: "JavaScript" },
     logo: "/assets/projects/CashPad.svg",
     href: "https://github.com/renato0x/CashPad",
     description: {
@@ -66,12 +66,23 @@ const projects: Project[] = [
   {
     name: "Transcrypty",
     fallbackStars: 3,
-    language: "Python",
+    meta: { pt: "Python", en: "Python" },
     logo: "/assets/projects/Transcrypty.bmp",
     href: "https://github.com/renato0x/Transcrypty",
     description: {
       pt: "Transcrição de voz rápida e privada para Windows, com processamento local.",
       en: "Fast, private speech-to-text for Windows, processed locally.",
+    },
+  },
+  {
+    name: "SUB-SEEMG",
+    fallbackStars: 0,
+    meta: { pt: "Em andamento", en: "In progress" },
+    logo: "/assets/projects/SUB-SEEMG.png",
+    href: "https://github.com/renato0x/SUB-SEEMG",
+    description: {
+      pt: "Registro da minha participação na evolução do sistema bibliotecário da rede estadual de Minas Gerais.",
+      en: "A record of my contribution to the library system for Minas Gerais state schools.",
     },
   },
 ];
@@ -116,6 +127,7 @@ const copy: Record<Language, PageCopy> = {
 const stackItems = [
   ["Next.js", "/assets/stack/nextdotjs.svg"],
   ["TypeScript", "/assets/stack/typescript.svg"],
+  ["C#", "/assets/stack/csharp.svg"],
   ["JavaScript", "/assets/stack/javascript.svg"],
   ["Firebase", "/assets/stack/firebase.svg"],
   ["Python", "/assets/stack/python.svg"],
@@ -224,6 +236,7 @@ export default function PortfolioClient() {
   const [stars, setStars] = useState<Record<ProjectName, number>>({
     CashPad: 1,
     Transcrypty: 3,
+    "SUB-SEEMG": 0,
   });
   const [track, setTrack] = useState<Track>(fallbackTrack);
   const [failedCover, setFailedCover] = useState<string | null>(null);
@@ -420,7 +433,7 @@ export default function PortfolioClient() {
                     <div className="project-meta">
                       <span className="language">
                         <i className="language-dot" />
-                        {project.language}
+                        {project.meta[language]}
                       </span>
                       <span className="stars" aria-label={currentCopy.githubStars}>
                         <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
