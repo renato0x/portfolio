@@ -143,7 +143,7 @@ button { font: inherit; }
 .music-state { display: flex; align-items: center; gap: 5px; flex: none; color: #858585; font: 8px var(--mono); letter-spacing: .015em; white-space: nowrap; }
 .music-state::before { content: ""; width: 5px; height: 5px; border: 1px solid #767676; border-radius: 50%; }
 .music-card[data-playing="true"] .music-state::before { background: #e5e5e5; border-color: #e5e5e5; }
-@keyframes ascii-reveal { 0% { opacity: 0; clip-path: inset(0 100% 0 0 round 4px); translate: -5px 0; } 16% { opacity: 1; } 86% { opacity: 1; clip-path: inset(0 0 0 0 round 4px); translate: 1px 0; } 100% { opacity: 1; clip-path: inset(0); translate: 0 0; } }
+@keyframes ascii-reveal { 0% { opacity: 0; clip-path: inset(0 100% 0 0 round 4px); translate: -5px 0; } 16% { opacity: 1; } 86% { opacity: 1; clip-path: inset(0 0 0 0 round 4px); translate: 1px 0; } 100% { opacity: 1; clip-path: none; translate: 0 0; } }
 @keyframes ascii-trace { 0% { opacity: 0; clip-path: inset(0 0 0 100%); transform: translateX(10px); } 18% { opacity: .75; } 74% { opacity: .58; clip-path: inset(0); transform: translateX(0); } 100% { opacity: 0; transform: translateX(-9px); } }
 @keyframes soundwave { from { transform: scaleY(.34); } to { transform: scaleY(.84); } }
 .entry-ascii { position: absolute; z-index: 3; top: -.92em; right: 0; color: #eee; font: 7px/1 var(--mono); letter-spacing: .14em; pointer-events: none; animation: ascii-trace .58s cubic-bezier(.22, 1, .36, 1) both; }
