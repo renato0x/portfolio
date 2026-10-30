@@ -186,7 +186,7 @@ function LocaleSwap({
 
     const timeout = window.setTimeout(() => {
       setActiveTransition((current) => current === transitionId ? 0 : current);
-    }, 650);
+    }, 1000);
 
     return () => window.clearTimeout(timeout);
   }, [ready, reduceMotion, transitionId]);
@@ -207,10 +207,11 @@ function LocaleSwap({
         key={transitionId}
         text={children}
         highlightTerms={highlightTerms}
-        className={`${textClass} locale-glitch`}
+        className={`${textClass} locale-settle`}
         revealMode="organic"
-        revealDurationMs={560}
-        flipDelayMs={42}
+        revealDurationMs={900}
+        scrambleRatio={0.2}
+        flipDelayMs={150}
         glitchIntervalMs={0}
         charset=".:=+*#@"
         encryptedClassName="text-neutral-400"

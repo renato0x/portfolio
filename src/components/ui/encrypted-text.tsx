@@ -13,6 +13,7 @@ type EncryptedTextProps = {
   revealDelayMs?: number;
   revealMode?: "sequential" | "organic";
   revealDurationMs?: number;
+  scrambleRatio?: number;
   glitchIntervalMs?: number;
   charset?: string;
   flipDelayMs?: number;
@@ -69,12 +70,28 @@ function organicRevealRanks(text: string) {
   });
 }
 
+function organicScrambleRanks(text: string) {
+  let seed = 2166136261;
+  for (const character of text) {
+    seed ^= character.codePointAt(0) ?? 0;
+    seed = Math.imul(seed, 16777619);
+  }
+
+  return Array.from(text, (_, index) => {
+    const cluster = Math.floor(index / 3);
+    const clusterNoise = hash32(seed ^ Math.imul(cluster + 1, 0x27d4eb2d)) / 0xffffffff;
+    const characterNoise = hash32(seed ^ Math.imul(index + 1, 0x165667b1)) / 0xffffffff;
+    return clusterNoise * 0.68 + characterNoise * 0.32;
+  });
+}
+
 export function EncryptedText({
   text,
   className,
   revealDelayMs = 50,
   revealMode = "sequential",
   revealDurationMs = 560,
+  scrambleRatio = 1,
   glitchIntervalMs = 15_000,
   charset = DEFAULT_CHARSET,
   flipDelayMs = 50,
@@ -86,12 +103,14 @@ export function EncryptedText({
   const animationFrameRef = useRef<number | null>(null);
   const isInView = useInView(ref, { once: true });
   const prefersReducedMotion = useReducedMotion();
+  const normalizedScrambleRatio = Math.max(0, Math.min(1, scrambleRatio));
   const [revealCount, setRevealCount] = useState(0);
   const [organicProgress, setOrganicProgress] = useState(0);
   const [scrambleChars, setScrambleChars] = useState(() =>
     stableScramble(text, charset),
   );
   const revealRanks = useMemo(() => organicRevealRanks(text), [text]);
+  const scrambleRanks = useMemo(() => organicScrambleRanks(text), [text]);
   const highlightRanges = useMemo(
     () => getCodeLeafRanges(text, highlightTerms),
     [highlightTerms, text],
@@ -113,12 +132,11 @@ export function EncryptedText({
     }
 
     let cancelled = false;
+    const startTime = performance.now();
     let lastRevealCount = -1;
-    let lastFlipTime = 0;
+    let lastFlipTime = startTime;
     let lastOrganicBucket = -1;
     let activeOrganicProgress = 0;
-    const startTime = performance.now();
-    setScrambleChars(randomScramble(text, charset));
     setRevealCount(0);
     setOrganicProgress(0);
 
@@ -251,9 +269,11 @@ export function EncryptedText({
   if (!text) return null;
   const characters = Array.from(text);
   const characterNodes = characters.map((character, index) => {
-    const isRevealed = revealMode === "organic"
-      ? character === " " || organicProgress >= (revealRanks[index] ?? 1)
-      : index < revealCount;
+    const isHighlighted = highlightRanges.some(({ start, end }) => index >= start && index < end);
+    const isScrambled = !isHighlighted && character !== " " && (scrambleRanks[index] ?? 1) < normalizedScrambleRatio;
+    const isRevealed = !isScrambled || (revealMode === "organic"
+      ? organicProgress >= (revealRanks[index] ?? 1)
+      : index < revealCount);
     const displayCharacter = isRevealed
       ? character
       : character === " "
