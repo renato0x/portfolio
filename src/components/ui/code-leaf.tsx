@@ -58,7 +58,6 @@ export function CodeLeaf({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipRef = useRef<HTMLSpanElement>(null);
   const pointerTypeRef = useRef<string | null>(null);
-  const suppressTooltipRef = useRef(false);
   const tooltipId = useId();
   const descriptionId = `${tooltipId}-description`;
   const reduceMotion = useReducedMotion();
@@ -108,12 +107,10 @@ export function CodeLeaf({
   }, [mark.description, mounted, tooltipVisible]);
 
   const handlePointerEnter = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (suppressTooltipRef.current) return;
     if (event.pointerType === "mouse" || event.pointerType === "pen") setHovered(true);
   };
 
   const handlePointerLeave = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    suppressTooltipRef.current = false;
     if (event.pointerType === "mouse" || event.pointerType === "pen") setHovered(false);
   };
 
@@ -145,15 +142,8 @@ export function CodeLeaf({
         onPointerUp={() => { pointerTypeRef.current = null; }}
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
-        onClick={() => {
-          pointerTypeRef.current = null;
-          suppressTooltipRef.current = true;
-          setHovered(false);
-          setFocused(false);
-        }}
         onFocus={() => { if (pointerTypeRef.current === null) setFocused(true); }}
         onBlur={() => {
-          suppressTooltipRef.current = false;
           setFocused(false);
         }}
         whileHover={reduceMotion ? undefined : hoverMotion}
