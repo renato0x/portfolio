@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, SyntheticEvent } from "react";
 import { useMotionValue, useSpring } from "motion/react";
 import { EncryptedText } from "@/components/ui/encrypted-text";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 type Language = "pt" | "en";
 type ProjectName = "CashPad" | "Transcrypty" | "SUB-SEEMG";
@@ -18,11 +19,13 @@ type Track = {
 
 type Project = {
   name: ProjectName;
+  featured?: boolean;
   fallbackStars: number;
   meta: Record<Language, string>;
   logo: string;
   href: string;
   description: Record<Language, string>;
+  scope?: Record<Language, string>;
 };
 
 type PageCopy = {
@@ -54,6 +57,22 @@ const fallbackTrack: Track = {
 
 const projects: Project[] = [
   {
+    name: "SUB-SEEMG",
+    featured: true,
+    fallbackStars: 0,
+    meta: { pt: "C#", en: "C#" },
+    logo: "/assets/projects/SUB-SEEMG.png",
+    href: "https://github.com/renato0x/SUB-SEEMG",
+    description: {
+      pt: "Desenvolvimento do sistema bibliotecário oficial do Estado de Minas Gerais.",
+      en: "Development of the official library system for the State of Minas Gerais.",
+    },
+    scope: {
+      pt: "Acervo · turmas · circulação · relatórios",
+      en: "Catalog · classes · circulation · reports",
+    },
+  },
+  {
     name: "CashPad",
     fallbackStars: 1,
     meta: { pt: "JavaScript", en: "JavaScript" },
@@ -73,17 +92,6 @@ const projects: Project[] = [
     description: {
       pt: "Transcrição de voz rápida e privada para Windows, com processamento local.",
       en: "Fast, private speech-to-text for Windows, processed locally.",
-    },
-  },
-  {
-    name: "SUB-SEEMG",
-    fallbackStars: 0,
-    meta: { pt: "C#", en: "C#" },
-    logo: "/assets/projects/SUB-SEEMG.png",
-    href: "https://github.com/renato0x/SUB-SEEMG",
-    description: {
-      pt: "Desenvolvimento do sistema bibliotecário oficial do Estado de Minas Gerais.",
-      en: "Development of the official library system for the State of Minas Gerais.",
     },
   },
 ];
@@ -167,7 +175,6 @@ function AsciiField() {
     let lastFrameTime = 0;
     let reduceMotion = motionQuery.matches;
     let finePointer = hoverQuery.matches;
-    let hasPointer = false;
     let lastWakePoint: { x: number; y: number; time: number } | null = null;
 
     const getFieldValue = (x: number, y: number, nx: number, ny: number) => {
@@ -216,8 +223,6 @@ function AsciiField() {
       const nextY = (event.clientY / window.innerHeight - 0.5) * 2;
       const rect = canvas.getBoundingClientRect();
       const point = { x: event.clientX - rect.left, y: event.clientY - rect.top, time: performance.now() };
-      hasPointer = true;
-
       if (!reduceMotion) {
         if (lastWakePoint) {
           const distance = Math.hypot(point.x - lastWakePoint.x, point.y - lastWakePoint.y);
@@ -256,7 +261,6 @@ function AsciiField() {
     };
 
     const resetParallax = () => {
-      hasPointer = false;
       lastWakePoint = null;
       pointerTargetX.set(0);
       pointerTargetY.set(0);
@@ -321,10 +325,6 @@ function AsciiField() {
         ? Math.min(1, (stormElapsed - stormFlash.startedAt) / stormFlash.duration)
         : 0;
       const flashEnvelope = stormFlash ? Math.sin(Math.PI * flashProgress) : 0;
-      const lightX = ((pointerX.get() + 1) * 0.5 * window.innerWidth) + 16;
-      const lightY = ((pointerY.get() + 1) * 0.5 * window.innerHeight) + 16;
-      const focusRadius = 66;
-      const focusRadiusSquared = focusRadius * focusRadius;
       const now = performance.now();
       while (wake.length && now - wake[0].time > 1050) wake.shift();
       let wakeLeft = Infinity;
@@ -349,7 +349,6 @@ function AsciiField() {
             const ny = (y / height - 0.5) * 2;
             const radius = Math.hypot(nx, ny);
             const value = getFieldValue(x, y, nx, ny);
-            let focus = 0;
             let trail = 0;
             let flash = 0;
 
@@ -362,17 +361,6 @@ function AsciiField() {
                 const falloff = 1 - distanceSquared / flashRadiusSquared;
                 const cloudAffinity = Math.max(0, Math.min(1, (value - 0.12) / 0.38));
                 flash = falloff * falloff * flashEnvelope * cloudAffinity;
-              }
-            }
-
-            if (hasPointer && finePointer && reduceMotion) {
-              const dx = lightX - x;
-              const dy = lightY - y;
-              const distanceSquared = dx * dx + dy * dy;
-
-              if (distanceSquared < focusRadiusSquared) {
-                const falloff = 1 - distanceSquared / focusRadiusSquared;
-                focus = falloff * falloff * 0.86;
               }
             }
 
@@ -400,17 +388,16 @@ function AsciiField() {
               }
             }
 
-            const influence = Math.max(focus, trail);
-            const threshold = 0.36 - focus * 0.12 - trail * 0.25 - flash * 0.065;
+            const threshold = 0.36 - trail * 0.25 - flash * 0.065;
 
-            if ((value > threshold || influence > 0.08) && radius < 1.45) {
-              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + focus * 0.28 + trail * 1.05 + flash * 0.12));
+            if ((value > threshold || trail > 0.08) && radius < 1.45) {
+              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + trail * 1.05 + flash * 0.12));
               const depth = 0.42 + (1 - Math.min(radius, 1)) * 0.72;
               const offsetX = Math.round(-parallaxX * depth * 4);
               const offsetY = Math.round(-parallaxY * depth * 3);
               const pulsePhase = (stormElapsed / 7_000) * Math.PI * 2 + nx * 2.6 - ny * 1.8;
               const pulse = reduceMotion ? 0 : (Math.sin(pulsePhase) + 1) * 0.5;
-              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12 + focus * 0.16 + trail * 0.62 + pulse * 0.025 + flash * 0.085;
+              const alpha = 0.06 + Math.max(0, value - threshold) * 0.12 + trail * 0.68 + pulse * 0.025 + flash * 0.085;
 
               context.globalAlpha = Math.min(0.72, alpha);
               context.fillStyle = "#e7e7e7";
@@ -658,22 +645,24 @@ export default function PortfolioClient() {
               <h2 className="sr-only" id="projects-title">{projectsLabel}</h2>
               <div className="project-grid">
                 {projects.map((project, index) => (
-                  <a
-                    className="project-card"
+                  <SpotlightCard
+                    as="a"
+                    className={`project-card${project.featured ? " project-card--featured" : ""}`}
                     style={{ "--n": index + 1 } as CSSProperties}
                     href={project.href}
                     target="_blank"
                     rel="noreferrer"
-                    aria-label={currentCopy.openProject(project.name)}
+                    aria-label={`${project.name}. ${project.description[language]}${project.scope ? `. ${project.scope[language]}` : ""}. ${currentCopy.openProject(project.name)}`}
                     key={project.name}
                   >
                     <div className="project-top">
                       <img className="project-mark" src={project.logo} alt="" />
                       <span className="project-open" aria-hidden="true">↗</span>
                     </div>
-                    <div>
+                    <div className="project-copy">
                       <h3>{project.name}</h3>
                       <p>{project.description[language]}</p>
+                      {project.scope && <span className="project-scope">{project.scope[language]}</span>}
                     </div>
                     <div className="project-meta">
                       <span className="language">
@@ -687,7 +676,7 @@ export default function PortfolioClient() {
                         <b aria-live="polite">{stars[project.name] ?? project.fallbackStars}</b>
                       </span>
                     </div>
-                  </a>
+                  </SpotlightCard>
                 ))}
               </div>
             </section>
@@ -733,7 +722,7 @@ export default function PortfolioClient() {
               </a>
             </nav>
 
-            <section className="music-card" aria-label={currentCopy.spotify} data-source={track.source}>
+            <SpotlightCard as="section" className="music-card" aria-label={currentCopy.spotify} data-source={track.source}>
               <span className="music-wave" aria-hidden="true">
                 <i /><i /><i /><i /><i /><i /><i /><i /><i />
               </span>
@@ -780,7 +769,7 @@ export default function PortfolioClient() {
                   />
                 </p>
               </div>
-            </section>
+            </SpotlightCard>
           </aside>
         </div>
       </main>
