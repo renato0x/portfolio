@@ -91,7 +91,7 @@ const copy: Record<Language, PageCopy> = {
     socialLinks: "Redes sociais",
     spotify: "Spotify",
     noPlayback: "sem reprodução",
-    listening: "ao vivo",
+    listening: "ouvindo agora",
     viaDiscord: "via Discord",
   },
   en: {
@@ -108,7 +108,7 @@ const copy: Record<Language, PageCopy> = {
     socialLinks: "Social links",
     spotify: "Spotify",
     noPlayback: "not playing",
-    listening: "live",
+    listening: "now playing",
     viaDiscord: "via Discord",
   },
 };
