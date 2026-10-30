@@ -8,6 +8,7 @@ type EncryptedTextProps = {
   text: string;
   className?: string;
   revealDelayMs?: number;
+  glitchIntervalMs?: number;
   charset?: string;
   flipDelayMs?: number;
   encryptedClassName?: string;
@@ -42,6 +43,7 @@ export function EncryptedText({
   text,
   className,
   revealDelayMs = 50,
+  glitchIntervalMs = 15_000,
   charset = DEFAULT_CHARSET,
   flipDelayMs = 50,
   encryptedClassName,
@@ -115,6 +117,74 @@ export function EncryptedText({
       }
     };
   }, [charset, flipDelayMs, isInView, prefersReducedMotion, revealDelayMs, text]);
+
+  useEffect(() => {
+    if (!isInView || glitchIntervalMs <= 0) return;
+
+    const reduceMotion =
+      prefersReducedMotion ??
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+
+    const characters = Array.from(text);
+    let cancelled = false;
+    let timeout: number | null = null;
+    let frame: number | null = null;
+
+    const scheduleGlitch = () => {
+      const interval = glitchIntervalMs * (0.8 + Math.random() * 0.4);
+      timeout = window.setTimeout(() => {
+        if (cancelled) return;
+
+        const startTime = performance.now();
+        let lastRevealCount = -1;
+        let lastFlipTime = 0;
+        setScrambleChars(randomScramble(text, charset));
+        setRevealCount(0);
+
+        const update = (now: number) => {
+          if (cancelled) return;
+
+          const revealed = Math.min(
+            characters.length,
+            Math.floor((now - startTime) / 20),
+          );
+
+          if (revealed !== lastRevealCount) {
+            lastRevealCount = revealed;
+            setRevealCount(revealed);
+          }
+
+          if (revealed >= characters.length) {
+            scheduleGlitch();
+            return;
+          }
+
+          if (now - lastFlipTime >= 45) {
+            setScrambleChars((current) =>
+              current.map((character, index) =>
+                index < revealed || characters[index] === " "
+                  ? character
+                  : randomCharacter(charset),
+              ),
+            );
+            lastFlipTime = now;
+          }
+
+          frame = window.requestAnimationFrame(update);
+        };
+
+        frame = window.requestAnimationFrame(update);
+      }, interval);
+    };
+
+    scheduleGlitch();
+    return () => {
+      cancelled = true;
+      if (timeout !== null) window.clearTimeout(timeout);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [charset, glitchIntervalMs, isInView, prefersReducedMotion, text]);
 
   if (!text) return null;
   const characters = Array.from(text);
