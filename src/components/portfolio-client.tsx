@@ -7,6 +7,7 @@ import { motion, useMotionValue, useReducedMotion, useSpring } from "motion/reac
 import { CodeLeafText } from "@/components/ui/code-leaf";
 import type { CodeLeafMark } from "@/components/ui/code-leaf";
 import { EncryptedText } from "@/components/ui/encrypted-text";
+import { HoverTooltip } from "@/components/ui/hover-tooltip";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 type Language = "pt" | "en";
@@ -107,7 +108,7 @@ const copy: Record<Language, PageCopy> = {
     bio: "Sou o Renato, tenho 18 anos e curso Análise e Desenvolvimento de Sistemas no IFNMG, em Montes Claros. Já estou no meu terceiro curso na área de desenvolvimento de sistemas. Desde cedo, sou curioso sobre tecnologia e sempre quis entender como as coisas funcionam. Aprendi muito na prática: fuçando computadores, experimentando programação e seguindo cada dúvida até encontrar uma resposta. Ainda estou descobrindo meu espaço na área, mas gosto justamente desse processo — testar, errar e, aos poucos, entender o que acontece por trás da tela.",
     bioHighlights: [
       { term: "IFNMG", description: "Instituto Federal do Norte de Minas Gerais" },
-      { term: "desenvolvimento de sistemas", description: "Ensino técnico profissionalizante" },
+      { term: "desenvolvimento de sistemas", description: "conclusão em 2028" },
     ],
     technologies: "Tecnologias usadas",
     technologyList: "Tecnologias",
@@ -132,7 +133,7 @@ const copy: Record<Language, PageCopy> = {
     bio: "I'm Renato, 18, studying Systems Analysis and Development at IFNMG in Montes Claros. I'm now on my third course in systems development. I've been curious about technology for as long as I can remember, always wanting to understand how things work. I've learned a lot by doing: tinkering with computers, trying out programming, and following each question until I find an answer. I'm still figuring out where I fit in the field, but I enjoy the process: trying things, making mistakes, and gradually understanding what's happening behind the screen.",
     bioHighlights: [
       { term: "IFNMG", description: "Federal Institute of Northern Minas Gerais" },
-      { term: "systems development", description: "Vocational technical education" },
+      { term: "systems development", description: "expected completion in 2028" },
     ],
     technologies: "Technologies",
     technologyList: "Technologies",
@@ -1006,9 +1007,9 @@ export default function PortfolioClient() {
               <span className="entry-ascii entry-ascii--stacks" aria-hidden="true">.:=+*#@</span>
               <ul className="stack-row" role="list" aria-label={currentCopy.technologyList}>
                 {stackItems.map(([name, image]) => (
-                  <li className="stack-item" title={name} aria-label={name} key={name}>
+                  <HoverTooltip as="li" className="stack-item" label={name} key={name}>
                     <img src={image} alt="" width="18" height="18" />
-                  </li>
+                  </HoverTooltip>
                 ))}
               </ul>
               <LocaleSwap className="stack-caption" ready={localeMotionReady} transitionId={localeTransitionId} ariaHidden>
@@ -1096,18 +1097,18 @@ export default function PortfolioClient() {
             </div>
 
             <nav className="socials" aria-label={socialLinksLabel}>
-              <a href="https://www.instagram.com/renato0x/" target="_blank" rel="noreferrer" aria-label="Instagram">
+              <HoverTooltip as="a" label="Instagram" href="https://www.instagram.com/renato0x/" target="_blank" rel="noreferrer">
                 <img src="/assets/social/instagram.svg" alt="" width="17" height="17" />
-              </a>
-              <a href="https://github.com/renato0x" target="_blank" rel="noreferrer" aria-label="GitHub">
+              </HoverTooltip>
+              <HoverTooltip as="a" label="GitHub" href="https://github.com/renato0x" target="_blank" rel="noreferrer">
                 <img src="/assets/social/github.svg" alt="" width="17" height="17" />
-              </a>
-              <a href="https://discord.com/users/726487228187934723" target="_blank" rel="noreferrer" aria-label="Discord">
+              </HoverTooltip>
+              <HoverTooltip as="a" label="Discord" href="https://discord.com/users/726487228187934723" target="_blank" rel="noreferrer">
                 <img src="/assets/social/discord.svg" alt="" width="17" height="17" />
-              </a>
-              <a href="https://www.linkedin.com/in/renato-mont/" target="_blank" rel="noreferrer" aria-label="LinkedIn">
+              </HoverTooltip>
+              <HoverTooltip as="a" label="LinkedIn" href="https://www.linkedin.com/in/renato-mont/" target="_blank" rel="noreferrer">
                 <span className="monogram" aria-hidden="true">in</span>
-              </a>
+              </HoverTooltip>
             </nav>
 
             <SpotlightCard as="section" className="music-card" aria-label={currentCopy.spotify} data-source={track?.source ?? "empty"} data-playing={isPlaying}>

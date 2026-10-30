@@ -86,13 +86,12 @@ export function CodeLeaf({
       const gap = 8;
       const width = tooltip.getBoundingClientRect().width;
       const height = tooltip.getBoundingClientRect().height;
-      const bioTop = buttonRef.current?.closest(".bio-block")?.getBoundingClientRect().top;
       const left = clamp(
         trigger.left + trigger.width / 2 - width / 2,
         margin,
         Math.max(margin, window.innerWidth - width - margin),
       );
-      const above = (bioTop ?? trigger.top) - height - gap;
+      const above = trigger.top - height - gap;
       const top = above >= margin ? above : trigger.bottom + gap;
 
       setTooltipPosition({ top, left });
@@ -121,12 +120,12 @@ export function CodeLeaf({
   const hoverMotion = {
     y: -2,
     scale: 1.035,
-    boxShadow: "0 7px 18px rgb(0 0 0 / .34), inset 0 0 0 1px #777",
+    boxShadow: "0 7px 18px rgb(0 0 0 / .22), inset 0 0 0 1px #626262",
   };
   const pressMotion = {
     y: 1,
     scale: 0.96,
-    boxShadow: "inset 0 2px 5px rgb(0 0 0 / .42), inset 0 0 0 1px #777",
+    boxShadow: "inset 0 2px 5px rgb(0 0 0 / .42), inset 0 0 0 1px #626262",
     transition: { type: "spring" as const, stiffness: 520, damping: 26 },
   };
 
