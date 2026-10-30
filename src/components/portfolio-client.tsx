@@ -145,8 +145,8 @@ function AsciiField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointerTargetX = useMotionValue(0);
   const pointerTargetY = useMotionValue(0);
-  const pointerX = useSpring(pointerTargetX, { stiffness: 210, damping: 29, mass: 0.42 });
-  const pointerY = useSpring(pointerTargetY, { stiffness: 210, damping: 29, mass: 0.42 });
+  const pointerX = useSpring(pointerTargetX, { stiffness: 130, damping: 32, mass: 0.55 });
+  const pointerY = useSpring(pointerTargetY, { stiffness: 130, damping: 32, mass: 0.55 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -158,6 +158,9 @@ function AsciiField() {
     const chars = " .,:;-=+*#%@";
     const wake: Array<{ x: number; y: number; time: number; energy: number }> = [];
     let time = 0;
+    let stormElapsed = 0;
+    let nextStormFlashAt = 18_000 + Math.random() * 10_000;
+    let stormFlash: { x: number; y: number; startedAt: number; duration: number } | null = null;
     let frame = 0;
     let width = 0;
     let height = 0;
@@ -166,6 +169,40 @@ function AsciiField() {
     let finePointer = hoverQuery.matches;
     let hasPointer = false;
     let lastWakePoint: { x: number; y: number; time: number } | null = null;
+
+    const getFieldValue = (x: number, y: number, nx: number, ny: number) => {
+      const wave =
+        Math.sin(nx * 9.4 + ny * 5.3 + time * 0.78) *
+        Math.cos(ny * 12.6 - nx * 3.7 - time * 0.51);
+      const grain =
+        Math.sin(x * 0.039 + y * 0.031 + time * 0.6) *
+        Math.cos(x * 0.012 - y * 0.021 + time * 0.37);
+      return wave * 0.68 + grain * 0.32;
+    };
+
+    const findCloudCenter = () => {
+      let centerX = width * 0.5;
+      let centerY = height * 0.5;
+      let bestScore = -Infinity;
+
+      for (let sample = 0; sample < 16; sample += 1) {
+        const x = width * (0.16 + Math.random() * 0.68);
+        const y = height * (0.16 + Math.random() * 0.68);
+        const nx = (x / width - 0.5) * 2;
+        const ny = (y / height - 0.5) * 2;
+        const radius = Math.hypot(nx, ny);
+        if (radius >= 1.45) continue;
+
+        const score = getFieldValue(x, y, nx, ny) - Math.max(0, radius - 0.8) * 0.18;
+        if (score > bestScore) {
+          bestScore = score;
+          centerX = x;
+          centerY = y;
+        }
+      }
+
+      return { x: centerX / width, y: centerY / height };
+    };
 
     const clearWake = () => {
       wake.length = 0;
@@ -260,6 +297,30 @@ function AsciiField() {
 
       const parallaxX = !finePointer ? 0 : pointerX.get();
       const parallaxY = !finePointer ? 0 : pointerY.get();
+      if (!reduceMotion) {
+        stormElapsed += delta;
+
+        if (!stormFlash && stormElapsed >= nextStormFlashAt && width > 0 && height > 0) {
+          const center = findCloudCenter();
+          stormFlash = {
+            ...center,
+            startedAt: stormElapsed,
+            duration: 300 + Math.random() * 200,
+          };
+        }
+
+        if (stormFlash && stormElapsed - stormFlash.startedAt >= stormFlash.duration) {
+          stormFlash = null;
+          nextStormFlashAt = stormElapsed + 18_000 + Math.random() * 10_000;
+        }
+      }
+
+      const flashRadius = Math.min(width, height) * 0.16;
+      const flashRadiusSquared = flashRadius * flashRadius;
+      const flashProgress = stormFlash
+        ? Math.min(1, (stormElapsed - stormFlash.startedAt) / stormFlash.duration)
+        : 0;
+      const flashEnvelope = stormFlash ? Math.sin(Math.PI * flashProgress) : 0;
       const lightX = ((pointerX.get() + 1) * 0.5 * window.innerWidth) + 16;
       const lightY = ((pointerY.get() + 1) * 0.5 * window.innerHeight) + 16;
       const focusRadius = 66;
@@ -287,8 +348,22 @@ function AsciiField() {
             const nx = (x / width - 0.5) * 2;
             const ny = (y / height - 0.5) * 2;
             const radius = Math.hypot(nx, ny);
+            const value = getFieldValue(x, y, nx, ny);
             let focus = 0;
             let trail = 0;
+            let flash = 0;
+
+            if (stormFlash && flashEnvelope > 0 && flashRadiusSquared > 0) {
+              const dx = x - stormFlash.x * width;
+              const dy = y - stormFlash.y * height;
+              const distanceSquared = dx * dx + dy * dy;
+
+              if (distanceSquared < flashRadiusSquared) {
+                const falloff = 1 - distanceSquared / flashRadiusSquared;
+                const cloudAffinity = Math.max(0, Math.min(1, (value - 0.12) / 0.38));
+                flash = falloff * falloff * flashEnvelope * cloudAffinity;
+              }
+            }
 
             if (hasPointer && finePointer && reduceMotion) {
               const dx = lightX - x;
@@ -325,22 +400,17 @@ function AsciiField() {
               }
             }
 
-            const wave =
-              Math.sin(nx * 9.4 + ny * 5.3 + time * 0.78) *
-              Math.cos(ny * 12.6 - nx * 3.7 - time * 0.51);
-            const grain =
-              Math.sin(x * 0.039 + y * 0.031 + time * 0.6) *
-              Math.cos(x * 0.012 - y * 0.021 + time * 0.37);
-            const value = wave * 0.68 + grain * 0.32;
             const influence = Math.max(focus, trail);
-            const threshold = 0.36 - focus * 0.12 - trail * 0.25;
+            const threshold = 0.36 - focus * 0.12 - trail * 0.25 - flash * 0.065;
 
             if ((value > threshold || influence > 0.08) && radius < 1.45) {
-              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + focus * 0.28 + trail * 1.05));
+              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + focus * 0.28 + trail * 1.05 + flash * 0.12));
               const depth = 0.42 + (1 - Math.min(radius, 1)) * 0.72;
-              const offsetX = Math.round(-parallaxX * depth * 12);
-              const offsetY = Math.round(-parallaxY * depth * 9);
-              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12 + focus * 0.16 + trail * 0.62;
+              const offsetX = Math.round(-parallaxX * depth * 4);
+              const offsetY = Math.round(-parallaxY * depth * 3);
+              const pulsePhase = (stormElapsed / 7_000) * Math.PI * 2 + nx * 2.6 - ny * 1.8;
+              const pulse = reduceMotion ? 0 : (Math.sin(pulsePhase) + 1) * 0.5;
+              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12 + focus * 0.16 + trail * 0.62 + pulse * 0.025 + flash * 0.085;
 
               context.globalAlpha = Math.min(0.72, alpha);
               context.fillStyle = "#e7e7e7";
@@ -368,6 +438,8 @@ function AsciiField() {
     const handleMotionPreference = (event: MediaQueryListEvent) => {
       reduceMotion = event.matches;
       if (reduceMotion) {
+        stormFlash = null;
+        nextStormFlashAt = stormElapsed + 18_000 + Math.random() * 10_000;
         clearWake();
         resetParallax();
       }
