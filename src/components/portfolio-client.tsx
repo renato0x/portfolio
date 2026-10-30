@@ -77,12 +77,12 @@ const projects: Project[] = [
   {
     name: "SUB-SEEMG",
     fallbackStars: 0,
-    meta: { pt: "Em andamento", en: "In progress" },
+    meta: { pt: "C#", en: "C#" },
     logo: "/assets/projects/SUB-SEEMG.png",
     href: "https://github.com/renato0x/SUB-SEEMG",
     description: {
-      pt: "Registro da minha participação na evolução do sistema bibliotecário da rede estadual de Minas Gerais.",
-      en: "A record of my contribution to the library system for Minas Gerais state schools.",
+      pt: "Desenvolvimento do sistema bibliotecário oficial do Estado de Minas Gerais.",
+      en: "Development of the official library system for the State of Minas Gerais.",
     },
   },
 ];
