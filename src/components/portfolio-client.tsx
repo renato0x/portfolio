@@ -6,7 +6,7 @@ import { EncryptedText } from "@/components/ui/encrypted-text";
 
 type Language = "pt" | "en";
 type ProjectName = "CashPad" | "Transcrypty";
-type TrackSource = "fallback" | "discord";
+type TrackSource = "fallback" | "spotify";
 
 type Track = {
   title: string;
@@ -37,8 +37,8 @@ type PageCopy = {
   profile: string;
   socialLinks: string;
   spotify: string;
-  noPresence: string;
-  viaDiscord: string;
+  noPlayback: string;
+  listening: string;
 };
 
 const languageKey = "renato0x-portfolio-language";
@@ -89,8 +89,8 @@ const copy: Record<Language, PageCopy> = {
     profile: "Perfil",
     socialLinks: "Redes sociais",
     spotify: "Spotify",
-    noPresence: "sem presença",
-    viaDiscord: "via Discord",
+    noPlayback: "sem reprodução",
+    listening: "ao vivo",
   },
   en: {
     title: "Renato Monteiro — software developer",
@@ -105,8 +105,8 @@ const copy: Record<Language, PageCopy> = {
     profile: "Profile",
     socialLinks: "Social links",
     spotify: "Spotify",
-    noPresence: "no presence",
-    viaDiscord: "via Discord",
+    noPlayback: "not playing",
+    listening: "live",
   },
 };
 
@@ -123,32 +123,6 @@ const stackItems = [
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function setTrackFromPresence(value: unknown, update: (track: Track) => void) {
-  if (!isRecord(value) || value.listening_to_spotify !== true) {
-    update(fallbackTrack);
-    return;
-  }
-
-  const spotify = value.spotify;
-  if (!isRecord(spotify) || typeof spotify.song !== "string" || typeof spotify.artist !== "string") {
-    update(fallbackTrack);
-    return;
-  }
-
-  const cover =
-    typeof spotify.album_art_url === "string" &&
-    spotify.album_art_url.startsWith("https:")
-      ? spotify.album_art_url
-      : fallbackTrack.cover;
-
-  update({
-    title: spotify.song,
-    artist: spotify.artist,
-    cover,
-    source: "discord",
-  });
 }
 
 function AsciiField() {
@@ -308,91 +282,54 @@ export default function PortfolioClient() {
   }, []);
 
   useEffect(() => {
-    let socket: WebSocket | null = null;
-    let heartbeat: number | null = null;
-    let reconnect: number | null = null;
-    let retry = 0;
     let active = true;
+    let timeout: number | null = null;
+    const controller = new AbortController();
 
-    const clearHeartbeat = () => {
-      if (heartbeat !== null) window.clearInterval(heartbeat);
-      heartbeat = null;
-    };
-    const scheduleReconnect = () => {
-      if (!active || reconnect !== null) return;
-      const delay = Math.min(60_000, 2_000 * 2 ** Math.min(retry++, 5));
-      reconnect = window.setTimeout(() => {
-        reconnect = null;
-        connect();
-      }, delay);
-    };
-    const handlePresence = (data: unknown) => {
-      if (!isRecord(data)) return;
-      const presence = isRecord(data.discord_user)
-        ? data
-        : isRecord(data["726487228187934723"])
-          ? data["726487228187934723"]
-          : null;
-      setTrackFromPresence(presence, setTrack);
-    };
-    const connect = () => {
-      if (!active) return;
-      clearHeartbeat();
-
+    const refreshTrack = async () => {
       try {
-        const currentSocket = new WebSocket("wss://api.lanyard.rest/socket");
-        socket = currentSocket;
-
-        currentSocket.addEventListener("message", (event: MessageEvent<string>) => {
-          let packet: Record<string, unknown>;
-          try {
-            packet = JSON.parse(event.data) as Record<string, unknown>;
-          } catch {
-            return;
-          }
-
-          if (packet.op === 1) {
-            const data = isRecord(packet.d) ? packet.d : {};
-            const interval = typeof data.heartbeat_interval === "number" ? data.heartbeat_interval : 30_000;
-            clearHeartbeat();
-            heartbeat = window.setInterval(() => {
-              if (currentSocket.readyState === WebSocket.OPEN) {
-                currentSocket.send(JSON.stringify({ op: 3, d: {} }));
-              }
-            }, interval);
-            currentSocket.send(
-              JSON.stringify({ op: 2, d: { subscribe_to_id: "726487228187934723" } }),
-            );
-            return;
-          }
-
-          if (packet.op === 0 && (packet.t === "INIT_STATE" || packet.t === "PRESENCE_UPDATE")) {
-            handlePresence(packet.d);
-          }
+        const response = await fetch("/api/spotify/now-playing", {
+          cache: "no-store",
+          signal: controller.signal,
         });
 
-        currentSocket.addEventListener("open", () => {
-          retry = 0;
-        });
-        currentSocket.addEventListener("close", () => {
-          if (!active) return;
-          clearHeartbeat();
+        if (!active) return;
+        if (response.status === 204 || !response.ok) {
           setTrack(fallbackTrack);
-          scheduleReconnect();
+          return;
+        }
+
+        const value: unknown = await response.json();
+        if (
+          !isRecord(value) ||
+          typeof value.title !== "string" ||
+          typeof value.artist !== "string" ||
+          typeof value.cover !== "string" ||
+          !value.cover.startsWith("https:")
+        ) {
+          setTrack(fallbackTrack);
+          return;
+        }
+
+        setTrack({
+          title: value.title,
+          artist: value.artist,
+          cover: value.cover,
+          source: "spotify",
         });
-        currentSocket.addEventListener("error", () => currentSocket.close());
-      } catch {
-        setTrack(fallbackTrack);
-        scheduleReconnect();
+      } catch (error: unknown) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (active) setTrack(fallbackTrack);
+      } finally {
+        if (active) timeout = window.setTimeout(refreshTrack, 15_000);
       }
     };
 
-    connect();
+    void refreshTrack();
     return () => {
       active = false;
-      clearHeartbeat();
-      if (reconnect !== null) window.clearTimeout(reconnect);
-      socket?.close();
+      controller.abort();
+      if (timeout !== null) window.clearTimeout(timeout);
     };
   }, []);
 
@@ -552,7 +489,7 @@ export default function PortfolioClient() {
                     <span>Spotify</span>
                   </span>
                   <span className="music-state">
-                    {track.source === "discord" ? currentCopy.viaDiscord : currentCopy.noPresence}
+                    {track.source === "spotify" ? currentCopy.listening : currentCopy.noPlayback}
                   </span>
                 </div>
                 <h2 className="music-title">{track.title}</h2>

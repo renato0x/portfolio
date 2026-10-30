@@ -1,11 +1,12 @@
 {
-  "name": "renato-portfolio-preview",
+  "name": "renato-portfolio",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "spotify:connect": "node scripts/connect-spotify.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -79,7 +79,7 @@ button { font: inherit; }
 .music-artist { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #aaa; margin: 0; }
 .music-state { display: flex; align-items: center; gap: 5px; flex: none; color: #858585; font: 8px var(--mono); letter-spacing: .015em; white-space: nowrap; }
 .music-state::before { content: ""; width: 5px; height: 5px; border: 1px solid #767676; border-radius: 50%; }
-.music-card[data-source="discord"] .music-state::before { background: #e5e5e5; border-color: #e5e5e5; }
+.music-card[data-source="spotify"] .music-state::before { background: #e5e5e5; border-color: #e5e5e5; }
 @keyframes arrive { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes trace-drift { from { opacity: .25; transform: translateX(-4px); } to { opacity: .8; transform: translateX(4px); } }
 
