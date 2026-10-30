@@ -476,6 +476,9 @@ export default function PortfolioClient() {
             </nav>
 
             <section className="music-card" aria-label={currentCopy.spotify} data-source={track.source}>
+              <span className="music-wave" aria-hidden="true">
+                <i /><i /><i /><i /><i /><i /><i /><i /><i />
+              </span>
               <div className="music-art">
                 <img
                   className="music-cover"

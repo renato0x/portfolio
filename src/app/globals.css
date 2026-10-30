@@ -68,7 +68,17 @@ button { font: inherit; }
 .socials .monogram { font: 700 15px/1 Arial, sans-serif; letter-spacing: -.08em; }
 .music-card { min-height: 112px; padding: 13px; display: grid; grid-template-columns: 54px minmax(0, 1fr); align-items: center; gap: 12px; background: #101010; border: 1px solid #343434; border-radius: 9px; position: relative; overflow: hidden; animation: arrive .52s .28s both; transition: border-color .2s, background .2s; }
 .music-card:hover { border-color: #505050; background: #121212; }
-.music-card::before { content: "::--==+:"; position: absolute; top: 5px; right: 9px; font: 8px var(--mono); letter-spacing: .16em; color: #727272; animation: trace-drift 8s ease-in-out infinite alternate; }
+.music-wave { position: absolute; top: 7px; right: 9px; width: 48px; height: 10px; display: flex; align-items: center; justify-content: space-between; opacity: .32; }
+.music-wave i { display: block; width: 2px; height: var(--wave-height, 4px); flex: none; border-radius: 999px; background: #aaa; transform: scaleY(.45); transform-origin: center; }
+.music-wave i:nth-child(1), .music-wave i:nth-child(9) { --wave-height: 3px; }
+.music-wave i:nth-child(2), .music-wave i:nth-child(8) { --wave-height: 5px; }
+.music-wave i:nth-child(3), .music-wave i:nth-child(7) { --wave-height: 7px; }
+.music-wave i:nth-child(4), .music-wave i:nth-child(6) { --wave-height: 9px; }
+.music-wave i:nth-child(5) { --wave-height: 6px; }
+.music-card[data-source="spotify"] .music-wave, .music-card[data-source="discord"] .music-wave { opacity: .82; }
+.music-card[data-source="spotify"] .music-wave i, .music-card[data-source="discord"] .music-wave i { animation: soundwave .64s ease-in-out infinite alternate; }
+.music-card[data-source="spotify"] .music-wave i:nth-child(2n), .music-card[data-source="discord"] .music-wave i:nth-child(2n) { animation-duration: .43s; animation-direction: alternate-reverse; }
+.music-card[data-source="spotify"] .music-wave i:nth-child(3n), .music-card[data-source="discord"] .music-wave i:nth-child(3n) { animation-duration: .78s; }
 .music-art, .music-cover { width: 54px; height: 54px; }
 .music-cover { display: block; object-fit: cover; border-radius: 4px; }
 .music-info { min-width: 0; }
@@ -81,7 +91,7 @@ button { font: inherit; }
 .music-state::before { content: ""; width: 5px; height: 5px; border: 1px solid #767676; border-radius: 50%; }
 .music-card[data-source="spotify"] .music-state::before, .music-card[data-source="discord"] .music-state::before { background: #e5e5e5; border-color: #e5e5e5; }
 @keyframes arrive { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes trace-drift { from { opacity: .25; transform: translateX(-4px); } to { opacity: .8; transform: translateX(4px); } }
+@keyframes soundwave { from { transform: scaleY(.28); } to { transform: scaleY(1); } }
 
 @media (max-width: 760px) {
   .page { padding: 11px 13px 10px; gap: 8px; }
@@ -117,7 +127,7 @@ button { font: inherit; }
   .music-title { font-size: 12px; margin-bottom: 2px; }
   .music-artist { font-size: 10px; }
   .music-state { font-size: 7px; }
-  .music-card::before { font-size: 7px; }
+  .music-wave { right: 8px; width: 43px; height: 9px; }
 }
 
 @media (max-height: 700px) and (min-width: 761px) {
