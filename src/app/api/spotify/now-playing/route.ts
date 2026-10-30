@@ -17,13 +17,62 @@ type SpotifyTrackResponse = {
   } | null;
 };
 
+type LanyardResponse = {
+  data?: {
+    listening_to_spotify?: boolean;
+    spotify?: {
+      song?: string;
+      artist?: string;
+      album_art_url?: string;
+    } | null;
+  };
+};
+
 let accessToken: string | null = null;
 let accessTokenExpiresAt = 0;
 let refreshToken = process.env.SPOTIFY_REFRESH_TOKEN ?? "";
 
 const responseHeaders = {
-  "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
+  "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
 };
+
+async function getDiscordFallback() {
+  try {
+    const response = await fetch(
+      "https://api.lanyard.rest/v1/users/726487228187934723",
+      { cache: "no-store", signal: AbortSignal.timeout(2500) },
+    );
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as LanyardResponse;
+    const presence = payload.data;
+    const spotify = presence?.spotify;
+    if (
+      presence?.listening_to_spotify !== true ||
+      typeof spotify?.song !== "string" ||
+      typeof spotify.artist !== "string" ||
+      typeof spotify.album_art_url !== "string" ||
+      !spotify.album_art_url.startsWith("https://")
+    ) {
+      return null;
+    }
+
+    return {
+      title: spotify.song,
+      artist: spotify.artist,
+      cover: spotify.album_art_url,
+      source: "discord",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fallbackOrNoContent() {
+  const discordTrack = await getDiscordFallback();
+  if (discordTrack) return Response.json(discordTrack, { headers: responseHeaders });
+  return noContent();
+}
 
 async function getAccessToken(forceRefresh = false): Promise<string | null> {
   if (!forceRefresh && accessToken && Date.now() < accessTokenExpiresAt - 60_000) {
@@ -68,18 +117,12 @@ function noContent() {
 
 export async function GET() {
   if (!process.env.SPOTIFY_CLIENT_ID || !refreshToken) {
-    return Response.json(
-      { error: "spotify_not_connected" },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
-    );
+    return fallbackOrNoContent();
   }
 
   let token = await getAccessToken();
   if (!token) {
-    return Response.json(
-      { error: "spotify_auth_unavailable" },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
-    );
+    return fallbackOrNoContent();
   }
 
   let playbackResponse: Response;
@@ -96,10 +139,7 @@ export async function GET() {
       accessToken = null;
       token = (await getAccessToken(true)) ?? "";
       if (!token) {
-        return Response.json(
-          { error: "spotify_auth_unavailable" },
-          { status: 503, headers: { "Cache-Control": "no-store" } },
-        );
+        return fallbackOrNoContent();
       }
       playbackResponse = await fetch(
         "https://api.spotify.com/v1/me/player/currently-playing",
@@ -110,19 +150,11 @@ export async function GET() {
       );
     }
   } catch {
-    return Response.json(
-      { error: "spotify_unavailable" },
-      { status: 502, headers: { "Cache-Control": "no-store" } },
-    );
+    return fallbackOrNoContent();
   }
 
   if (playbackResponse.status === 204) return noContent();
-  if (!playbackResponse.ok) {
-    return Response.json(
-      { error: "spotify_unavailable" },
-      { status: 502, headers: { "Cache-Control": "no-store" } },
-    );
-  }
+  if (!playbackResponse.ok) return fallbackOrNoContent();
 
   let playback: SpotifyTrackResponse;
   try {
@@ -150,7 +182,7 @@ export async function GET() {
   }
 
   return Response.json(
-    { title: item.name, artist: artists.join(", "), cover },
+    { title: item.name, artist: artists.join(", "), cover, source: "spotify" },
     { headers: responseHeaders },
   );
 }

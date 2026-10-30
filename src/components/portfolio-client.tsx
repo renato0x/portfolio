@@ -6,7 +6,7 @@ import { EncryptedText } from "@/components/ui/encrypted-text";
 
 type Language = "pt" | "en";
 type ProjectName = "CashPad" | "Transcrypty";
-type TrackSource = "fallback" | "spotify";
+type TrackSource = "fallback" | "spotify" | "discord";
 
 type Track = {
   title: string;
@@ -39,6 +39,7 @@ type PageCopy = {
   spotify: string;
   noPlayback: string;
   listening: string;
+  viaDiscord: string;
 };
 
 const languageKey = "renato0x-portfolio-language";
@@ -91,6 +92,7 @@ const copy: Record<Language, PageCopy> = {
     spotify: "Spotify",
     noPlayback: "sem reprodução",
     listening: "ao vivo",
+    viaDiscord: "via Discord",
   },
   en: {
     title: "Renato Monteiro — software developer",
@@ -107,6 +109,7 @@ const copy: Record<Language, PageCopy> = {
     spotify: "Spotify",
     noPlayback: "not playing",
     listening: "live",
+    viaDiscord: "via Discord",
   },
 };
 
@@ -305,7 +308,8 @@ export default function PortfolioClient() {
           typeof value.title !== "string" ||
           typeof value.artist !== "string" ||
           typeof value.cover !== "string" ||
-          !value.cover.startsWith("https:")
+          !value.cover.startsWith("https:") ||
+          (value.source !== "spotify" && value.source !== "discord")
         ) {
           setTrack(fallbackTrack);
           return;
@@ -315,7 +319,7 @@ export default function PortfolioClient() {
           title: value.title,
           artist: value.artist,
           cover: value.cover,
-          source: "spotify",
+          source: value.source,
         });
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -489,7 +493,11 @@ export default function PortfolioClient() {
                     <span>Spotify</span>
                   </span>
                   <span className="music-state">
-                    {track.source === "spotify" ? currentCopy.listening : currentCopy.noPlayback}
+                    {track.source === "spotify"
+                      ? currentCopy.listening
+                      : track.source === "discord"
+                        ? currentCopy.viaDiscord
+                        : currentCopy.noPlayback}
                   </span>
                 </div>
                 <h2 className="music-title">{track.title}</h2>

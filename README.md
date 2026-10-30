@@ -19,11 +19,11 @@ npm run build
 npm start
 ```
 
-O cartão consulta a faixa atual pela Spotify Web API e exibe “heart pt. 6”, de Kendrick Lamar, quando não há reprodução ativa.
+O cartão consulta a Spotify Web API; se ela estiver indisponível, tenta a presença do Discord via Lanyard. Sem reprodução, mantém “heart pt. 6”, de Kendrick Lamar.
 
 ## Conectar o Spotify
 
-1. No painel do Spotify Developer, adicione esta Redirect URI ao app:
+1. No painel do Spotify Developer, confirme que esta Redirect URI está cadastrada no app:
 
    ```text
    http://127.0.0.1:3000/callback
@@ -36,4 +36,4 @@ O cartão consulta a faixa atual pela Spotify Web API e exibe “heart pt. 6”,
    npm run spotify:connect
    ```
 
-O fluxo PKCE salva o refresh token como variável de produção sensível na Vercel, mantém uma cópia local ignorada pelo Git e publica uma nova implantação. O app solicita somente a permissão `user-read-currently-playing`. O refresh token do Spotify expira após seis meses; execute o comando novamente para reautorizar quando necessário.
+O fluxo PKCE salva o refresh token como variável de produção sensível na Vercel, mantém uma cópia local ignorada pelo Git e publica uma nova implantação. O app solicita a permissão `user-read-currently-playing`. O access token se renova automaticamente; o refresh token expira após 180 dias. A presença do Discord continua como alternativa e “heart pt. 6” como fallback. Execute o comando novamente para reautorizar quando necessário.
