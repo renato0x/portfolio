@@ -163,17 +163,40 @@ function AsciiField() {
     let lastFrameTime = 0;
     let reduceMotion = motionQuery.matches;
     let finePointer = hoverQuery.matches;
+    let hasPointer = false;
 
     const handlePointerMove = (event: PointerEvent) => {
-      if (reduceMotion || !finePointer || event.pointerType === "touch") return;
+      if (!finePointer || event.pointerType === "touch") return;
 
-      pointerTargetX.set((event.clientX / window.innerWidth - 0.5) * 2);
-      pointerTargetY.set((event.clientY / window.innerHeight - 0.5) * 2);
+      const nextX = (event.clientX / window.innerWidth - 0.5) * 2;
+      const nextY = (event.clientY / window.innerHeight - 0.5) * 2;
+      hasPointer = true;
+
+      if (reduceMotion) {
+        pointerTargetX.jump(nextX);
+        pointerTargetY.jump(nextY);
+        pointerX.jump(nextX);
+        pointerY.jump(nextY);
+        draw();
+        return;
+      }
+
+      pointerTargetX.set(nextX);
+      pointerTargetY.set(nextY);
     };
 
     const resetParallax = () => {
+      hasPointer = false;
       pointerTargetX.set(0);
       pointerTargetY.set(0);
+
+      if (reduceMotion) {
+        pointerTargetX.jump(0);
+        pointerTargetY.jump(0);
+        pointerX.jump(0);
+        pointerY.jump(0);
+        draw();
+      }
     };
 
     const handleHoverPreference = (event: MediaQueryListEvent) => {
@@ -200,8 +223,30 @@ function AsciiField() {
       context.clearRect(0, 0, width, height);
       context.font = "10px ui-monospace,monospace";
 
-      const parallaxX = reduceMotion || !finePointer ? 0 : pointerX.get();
-      const parallaxY = reduceMotion || !finePointer ? 0 : pointerY.get();
+      const parallaxX = !finePointer ? 0 : pointerX.get();
+      const parallaxY = !finePointer ? 0 : pointerY.get();
+      const lightX = ((pointerX.get() + 1) * 0.5 * window.innerWidth) + 16;
+      const lightY = ((pointerY.get() + 1) * 0.5 * window.innerHeight) + 16;
+      const velocityX = pointerX.getVelocity() * window.innerWidth * 0.5;
+      const velocityY = pointerY.getVelocity() * window.innerHeight * 0.5;
+      const velocity = reduceMotion ? 0 : Math.hypot(velocityX, velocityY);
+      const trailLength = velocity > 90 ? Math.min(104, velocity * 0.068) : 0;
+      const trailX = velocity === 0 ? 0 : (velocityX / velocity) * trailLength;
+      const trailY = velocity === 0 ? 0 : (velocityY / velocity) * trailLength;
+      const trailStartX = lightX - trailX;
+      const trailStartY = lightY - trailY;
+      const trailLengthSquared = trailX * trailX + trailY * trailY;
+      const focusRadius = Math.min(290, Math.max(220, Math.min(window.innerWidth, window.innerHeight) * 0.34));
+      const focusRadiusSquared = focusRadius * focusRadius;
+
+      if (hasPointer && finePointer) {
+        const glow = context.createRadialGradient(lightX, lightY, 0, lightX, lightY, focusRadius);
+        glow.addColorStop(0, "rgba(242, 242, 242, 0.07)");
+        glow.addColorStop(0.28, "rgba(222, 222, 222, 0.035)");
+        glow.addColorStop(1, "rgba(210, 210, 210, 0)");
+        context.fillStyle = glow;
+        context.fillRect(0, 0, width, height);
+      }
 
       if (width > 0 && height > 0) {
         for (let y = 16; y < height; y += 14) {
@@ -209,6 +254,36 @@ function AsciiField() {
             const nx = (x / width - 0.5) * 2;
             const ny = (y / height - 0.5) * 2;
             const radius = Math.hypot(nx, ny);
+            let focus = 0;
+            let trail = 0;
+
+            if (hasPointer && finePointer) {
+              const dx = lightX - x;
+              const dy = lightY - y;
+              const distanceSquared = dx * dx + dy * dy;
+
+              if (distanceSquared < focusRadiusSquared) {
+                const falloff = 1 - distanceSquared / focusRadiusSquared;
+                focus = falloff * falloff;
+              }
+
+              if (trailLengthSquared > 0) {
+                const fromStartX = x - trailStartX;
+                const fromStartY = y - trailStartY;
+                const projection = Math.max(0, Math.min(1, (fromStartX * trailX + fromStartY * trailY) / trailLengthSquared));
+                const closestX = trailStartX + projection * trailX;
+                const closestY = trailStartY + projection * trailY;
+                const trailDx = x - closestX;
+                const trailDy = y - closestY;
+                const trailDistanceSquared = trailDx * trailDx + trailDy * trailDy;
+                const trailRadius = 76;
+
+                if (trailDistanceSquared < trailRadius * trailRadius) {
+                  const falloff = 1 - trailDistanceSquared / (trailRadius * trailRadius);
+                  trail = falloff * falloff * Math.min(1, velocity / 1500);
+                }
+              }
+            }
 
             const wave =
               Math.sin(nx * 9.4 + ny * 5.3 + time * 0.78) *
@@ -217,16 +292,16 @@ function AsciiField() {
               Math.sin(x * 0.039 + y * 0.031 + time * 0.6) *
               Math.cos(x * 0.012 - y * 0.021 + time * 0.37);
             const value = wave * 0.68 + grain * 0.32;
-            const threshold = 0.36;
+            const threshold = 0.36 - focus * 0.12 - trail * 0.07;
 
             if (value > threshold && radius < 1.45) {
-              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold)));
+              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + focus * 0.28 + trail * 0.18));
               const depth = 0.42 + (1 - Math.min(radius, 1)) * 0.72;
               const offsetX = Math.round(-parallaxX * depth * 12);
               const offsetY = Math.round(-parallaxY * depth * 9);
-              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12;
+              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12 + focus * 0.16 + trail * 0.13;
 
-              context.globalAlpha = Math.min(0.25, alpha);
+              context.globalAlpha = Math.min(0.38, alpha);
               context.fillStyle = "#e7e7e7";
               context.fillText(
                 chars[Math.floor(density * (chars.length - 1))],
@@ -253,10 +328,6 @@ function AsciiField() {
       reduceMotion = event.matches;
       if (reduceMotion) {
         resetParallax();
-        pointerTargetX.jump(0);
-        pointerTargetY.jump(0);
-        pointerX.jump(0);
-        pointerY.jump(0);
       }
       window.cancelAnimationFrame(frame);
       if (!document.hidden) draw();
