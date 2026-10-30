@@ -163,39 +163,23 @@ function AsciiField() {
     let lastFrameTime = 0;
     let reduceMotion = motionQuery.matches;
     let finePointer = hoverQuery.matches;
-    let hasPointer = false;
-    let lastPointerMove = 0;
 
     const handlePointerMove = (event: PointerEvent) => {
       if (reduceMotion || !finePointer || event.pointerType === "touch") return;
 
-      const now = performance.now();
-      const targetX = event.clientX;
-      const targetY = event.clientY;
+      pointerTargetX.set((event.clientX / window.innerWidth - 0.5) * 2);
+      pointerTargetY.set((event.clientY / window.innerHeight - 0.5) * 2);
+    };
 
-      if (event.target instanceof Element && event.target.closest(".bio-block, .profile-head, .stack-caption")) {
-        hasPointer = false;
-        return;
-      }
-
-      if (!hasPointer) {
-        pointerTargetX.jump(targetX);
-        pointerTargetY.jump(targetY);
-        pointerX.jump(targetX);
-        pointerY.jump(targetY);
-        hasPointer = true;
-      } else {
-        pointerTargetX.set(targetX);
-        pointerTargetY.set(targetY);
-      }
-
-      lastPointerMove = now;
+    const resetParallax = () => {
+      pointerTargetX.set(0);
+      pointerTargetY.set(0);
     };
 
     const handleHoverPreference = (event: MediaQueryListEvent) => {
       finePointer = event.matches;
       if (!finePointer) {
-        hasPointer = false;
+        resetParallax();
       }
     };
 
@@ -216,70 +200,15 @@ function AsciiField() {
       context.clearRect(0, 0, width, height);
       context.font = "10px ui-monospace,monospace";
 
-      const now = performance.now();
-      const pointerAge = now - lastPointerMove;
-      const pointerStrength = hasPointer && finePointer && !reduceMotion
-        ? Math.max(0, 1 - Math.max(0, pointerAge - 130) / 720)
-        : 0;
-      const cursorX = pointerX.get();
-      const cursorY = pointerY.get();
-      const velocityX = pointerX.getVelocity();
-      const velocityY = pointerY.getVelocity();
-      const velocity = Math.hypot(velocityX, velocityY);
-      const cursorSpeed = Math.min(1, velocity / 1800);
-      const wakeLength = velocity > 60 ? Math.min(132, velocity * 0.058) : 0;
-      const wakeX = velocity === 0 ? 0 : (velocityX / velocity) * wakeLength;
-      const wakeY = velocity === 0 ? 0 : (velocityY / velocity) * wakeLength;
-      const wakeStartX = cursorX - wakeX;
-      const wakeStartY = cursorY - wakeY;
-      const wakeLengthSquared = wakeX * wakeX + wakeY * wakeY;
+      const parallaxX = reduceMotion || !finePointer ? 0 : pointerX.get();
+      const parallaxY = reduceMotion || !finePointer ? 0 : pointerY.get();
 
       if (width > 0 && height > 0) {
-        const focusRadius = Math.min(248, Math.max(168, Math.min(width, height) * 0.25));
-        const focusRadiusSquared = focusRadius * focusRadius;
-        const trailRadiusSquared = 92 * 92;
-
         for (let y = 16; y < height; y += 14) {
           for (let x = 8; x < width; x += 10) {
             const nx = (x / width - 0.5) * 2;
             const ny = (y / height - 0.5) * 2;
             const radius = Math.hypot(nx, ny);
-            let influence = 0;
-            let pullX = 0;
-            let pullY = 0;
-
-            if (pointerStrength > 0.01) {
-              const dx = cursorX - x;
-              const dy = cursorY - y;
-              const distanceSquared = dx * dx + dy * dy;
-              if (distanceSquared < focusRadiusSquared) {
-                const focus = 1 - distanceSquared / focusRadiusSquared;
-                const pulse = 0.84 + Math.sin(Math.sqrt(distanceSquared) * 0.035 - time * 1.35) * 0.16;
-                influence = focus * focus * 0.78 * pointerStrength * pulse;
-                pullX = dx;
-                pullY = dy;
-              }
-
-              if (wakeLengthSquared > 0 && cursorSpeed > 0.04) {
-                const fromStartX = x - wakeStartX;
-                const fromStartY = y - wakeStartY;
-                const projection = Math.max(0, Math.min(1, (fromStartX * wakeX + fromStartY * wakeY) / wakeLengthSquared));
-                const nearestX = wakeStartX + projection * wakeX;
-                const nearestY = wakeStartY + projection * wakeY;
-                const trailX = x - nearestX;
-                const trailY = y - nearestY;
-                const trailDistanceSquared = trailX * trailX + trailY * trailY;
-                if (trailDistanceSquared < trailRadiusSquared) {
-                  const trailFalloff = 1 - trailDistanceSquared / trailRadiusSquared;
-                  const trailEnergy = trailFalloff * cursorSpeed * pointerStrength * 0.66;
-                  if (trailEnergy > influence) {
-                    influence = trailEnergy;
-                    pullX = trailX;
-                    pullY = trailY;
-                  }
-                }
-              }
-            }
 
             const wave =
               Math.sin(nx * 9.4 + ny * 5.3 + time * 0.78) *
@@ -288,22 +217,21 @@ function AsciiField() {
               Math.sin(x * 0.039 + y * 0.031 + time * 0.6) *
               Math.cos(x * 0.012 - y * 0.021 + time * 0.37);
             const value = wave * 0.68 + grain * 0.32;
-            const threshold = 0.36 - influence * 0.24;
+            const threshold = 0.36;
 
             if (value > threshold && radius < 1.45) {
-              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + influence * 0.56));
-              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12 + influence * 0.58;
-              const distance = Math.hypot(pullX, pullY);
-              const displacement = influence * 2.6;
-              const offsetX = distance === 0 ? 0 : (pullX / distance) * displacement;
-              const offsetY = distance === 0 ? 0 : (pullY / distance) * displacement;
+              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold)));
+              const depth = 0.42 + (1 - Math.min(radius, 1)) * 0.72;
+              const offsetX = Math.round(-parallaxX * depth * 12);
+              const offsetY = Math.round(-parallaxY * depth * 9);
+              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12;
 
-              context.globalAlpha = Math.min(0.58, alpha);
+              context.globalAlpha = Math.min(0.25, alpha);
               context.fillStyle = "#e7e7e7";
               context.fillText(
                 chars[Math.floor(density * (chars.length - 1))],
-                x + offsetX,
-                y + offsetY,
+                x + offsetX + 16,
+                y + offsetY + 16,
               );
             }
           }
@@ -324,7 +252,11 @@ function AsciiField() {
     const handleMotionPreference = (event: MediaQueryListEvent) => {
       reduceMotion = event.matches;
       if (reduceMotion) {
-        hasPointer = false;
+        resetParallax();
+        pointerTargetX.jump(0);
+        pointerTargetY.jump(0);
+        pointerX.jump(0);
+        pointerY.jump(0);
       }
       window.cancelAnimationFrame(frame);
       if (!document.hidden) draw();
@@ -338,6 +270,7 @@ function AsciiField() {
 
     resizeObserver.observe(canvas);
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("pointerleave", resetParallax);
     document.addEventListener("visibilitychange", handleVisibility);
     motionQuery.addEventListener("change", handleMotionPreference);
     hoverQuery.addEventListener("change", handleHoverPreference);
@@ -347,6 +280,7 @@ function AsciiField() {
       window.cancelAnimationFrame(frame);
       resizeObserver.disconnect();
       window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerleave", resetParallax);
       document.removeEventListener("visibilitychange", handleVisibility);
       motionQuery.removeEventListener("change", handleMotionPreference);
       hoverQuery.removeEventListener("change", handleHoverPreference);
