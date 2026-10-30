@@ -187,7 +187,7 @@ function AsciiField() {
           const steps = Math.floor(distance / 16);
           const elapsed = Math.max(1, point.time - lastWakePoint.time);
           const speed = distance / elapsed * 1000;
-          const energy = Math.min(1, 0.58 + speed / 2200);
+          const energy = Math.min(1, 0.72 + speed / 2200);
 
           for (let step = 1; step <= steps; step += 1) {
             const progress = step / (steps + 1);
@@ -200,7 +200,7 @@ function AsciiField() {
           }
         }
 
-        wake.push({ ...point, energy: 0.58 });
+        wake.push({ ...point, energy: 0.72 });
         if (wake.length > 42) wake.splice(0, wake.length - 42);
         lastWakePoint = point;
       }
@@ -262,10 +262,10 @@ function AsciiField() {
       const parallaxY = !finePointer ? 0 : pointerY.get();
       const lightX = ((pointerX.get() + 1) * 0.5 * window.innerWidth) + 16;
       const lightY = ((pointerY.get() + 1) * 0.5 * window.innerHeight) + 16;
-      const focusRadius = Math.min(210, Math.max(150, Math.min(window.innerWidth, window.innerHeight) * 0.22));
+      const focusRadius = 66;
       const focusRadiusSquared = focusRadius * focusRadius;
       const now = performance.now();
-      while (wake.length && now - wake[0].time > 660) wake.shift();
+      while (wake.length && now - wake[0].time > 1050) wake.shift();
       let wakeLeft = Infinity;
       let wakeRight = -Infinity;
       let wakeTop = Infinity;
@@ -276,19 +276,10 @@ function AsciiField() {
         wakeTop = Math.min(wakeTop, sample.y);
         wakeBottom = Math.max(wakeBottom, sample.y);
       }
-      wakeLeft -= 52;
-      wakeRight += 52;
-      wakeTop -= 52;
-      wakeBottom += 52;
-
-      if (hasPointer && finePointer) {
-        const glow = context.createRadialGradient(lightX, lightY, 0, lightX, lightY, focusRadius);
-        glow.addColorStop(0, "rgba(242, 242, 242, 0.07)");
-        glow.addColorStop(0.28, "rgba(222, 222, 222, 0.035)");
-        glow.addColorStop(1, "rgba(210, 210, 210, 0)");
-        context.fillStyle = glow;
-        context.fillRect(0, 0, width, height);
-      }
+      wakeLeft -= 60;
+      wakeRight += 60;
+      wakeTop -= 60;
+      wakeBottom += 60;
 
       if (width > 0 && height > 0) {
         for (let y = 16; y < height; y += 14) {
@@ -299,7 +290,7 @@ function AsciiField() {
             let focus = 0;
             let trail = 0;
 
-            if (hasPointer && finePointer) {
+            if (hasPointer && finePointer && reduceMotion) {
               const dx = lightX - x;
               const dy = lightY - y;
               const distanceSquared = dx * dx + dy * dy;
@@ -319,18 +310,18 @@ function AsciiField() {
               for (let index = wake.length - 1; index >= 0; index -= 1) {
                 const sample = wake[index];
                 const age = now - sample.time;
-                if (age > 660) continue;
+                if (age > 1050) continue;
 
                 const dx = x - sample.x;
                 const dy = y - sample.y;
-                const trailRadius = 52;
+                const trailRadius = 60;
                 const distanceSquared = dx * dx + dy * dy;
                 if (distanceSquared >= trailRadius * trailRadius) continue;
 
                 const spatial = 1 - distanceSquared / (trailRadius * trailRadius);
-                const temporal = Math.exp(-age / 265);
+                const temporal = Math.exp(-age / 430);
                 trail = Math.max(trail, spatial * spatial * temporal * sample.energy);
-                if (trail > 0.88) break;
+                if (trail > 0.96) break;
               }
             }
 
@@ -342,16 +333,16 @@ function AsciiField() {
               Math.cos(x * 0.012 - y * 0.021 + time * 0.37);
             const value = wave * 0.68 + grain * 0.32;
             const influence = Math.max(focus, trail);
-            const threshold = 0.36 - focus * 0.14 - trail * 0.22;
+            const threshold = 0.36 - focus * 0.12 - trail * 0.25;
 
             if ((value > threshold || influence > 0.08) && radius < 1.45) {
-              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + focus * 0.38 + trail * 0.72));
+              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + focus * 0.28 + trail * 1.05));
               const depth = 0.42 + (1 - Math.min(radius, 1)) * 0.72;
               const offsetX = Math.round(-parallaxX * depth * 12);
               const offsetY = Math.round(-parallaxY * depth * 9);
-              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12 + focus * 0.2 + trail * 0.52;
+              const alpha = 0.045 + Math.max(0, value - threshold) * 0.12 + focus * 0.16 + trail * 0.62;
 
-              context.globalAlpha = Math.min(0.38, alpha);
+              context.globalAlpha = Math.min(0.72, alpha);
               context.fillStyle = "#e7e7e7";
               context.fillText(
                 chars[Math.floor(density * (chars.length - 1))],
