@@ -383,16 +383,17 @@ function AsciiField() {
 
       const normalizedX = x / Math.max(width, 1);
       const normalizedY = y / Math.max(height, 1);
-      const primary = Math.sin(normalizedX * 6.3 + normalizedY * 3.7 - elapsedSeconds * 0.18);
+      const cycle = elapsedSeconds * (Math.PI * 2 / 18);
+      const primary = Math.sin(normalizedX * 5.8 + normalizedY * 2.8 - cycle);
       const cross = Math.sin(
-        normalizedX * -2.4 + normalizedY * 7.1 + elapsedSeconds * 0.115 + Math.sin(elapsedSeconds * 0.06) * 0.85,
+        normalizedX * -2.1 + normalizedY * 6.2 + cycle * 2 + Math.sin(cycle) * 0.46,
       );
-      const ripple = Math.sin((normalizedX + normalizedY) * 10.5 - elapsedSeconds * 0.075 + Math.sin(normalizedX * 1.7 - normalizedY * 1.2) * 0.5);
-      const field = (primary * 0.5 + cross * 0.36 + ripple * 0.14 + 1) * 0.5;
+      const ripple = Math.sin((normalizedX + normalizedY) * 8.6 - cycle * 3 + Math.sin(normalizedX * 1.7 - normalizedY * 1.2) * 0.42);
+      const field = (primary * 0.62 + cross * 0.26 + ripple * 0.12 + 1) * 0.5;
 
-      dotWave.opacity = 0.28 + smoothStep(field) * 0.56;
-      dotWave.offsetX = primary * 1.15 + cross * 0.55 + ripple * 0.2;
-      dotWave.offsetY = -primary * 0.34 + cross * 0.8 - ripple * 0.3;
+      dotWave.opacity = 0.28 + smoothStep(field) * 0.54;
+      dotWave.offsetX = primary * 0.95 + cross * 0.48 + ripple * 0.18;
+      dotWave.offsetY = -primary * 0.3 + cross * 0.68 - ripple * 0.24;
       return dotWave;
     };
 
@@ -420,8 +421,8 @@ function AsciiField() {
           const parallaxDepth = 0.55 + cellNoise(column, row, 5) * 0.55;
           const phase = elapsedSeconds * (0.15 + cellNoise(column, row, 3) * 0.1) + seed * 15;
           const fadePhase = elapsedSeconds * (0.33 + cellNoise(column, row, 6) * 0.16) + seed * 47;
-          const pulse = reduceMotion ? 0.58 : 0.48 + Math.sin(phase) * 0.22;
-          const localFade = reduceMotion ? 0.92 : 0.76 + smoothStep((Math.sin(fadePhase) + 1) * 0.5) * 0.24;
+          const pulse = reduceMotion ? 0.58 : 0.48 + Math.sin(phase) * 0.16;
+          const localFade = reduceMotion ? 0.92 : 0.84 + smoothStep((Math.sin(fadePhase) + 1) * 0.5) * 0.16;
           const driftX = reduceMotion ? 0 : Math.sin(elapsedSeconds * 0.19 + seed * 27) * (0.28 + seed * 0.52);
           const driftY = reduceMotion ? 0 : Math.cos(elapsedSeconds * 0.15 + seed * 19) * (0.22 + seed * 0.42);
           const edgeDistance = Math.min(x, y, width - x, height - y);
