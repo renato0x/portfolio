@@ -637,7 +637,7 @@ function ProfilePhotoHoverPreview({ src, label }: { src: string; label: string }
     let top = pointY - size - 42;
 
     if (isCompact) {
-      size = Math.min(280, window.innerWidth - margin * 2, window.innerHeight - margin * 2);
+      size = Math.min(140, window.innerWidth - margin * 2, window.innerHeight - margin * 2);
       left = (window.innerWidth - size) / 2;
       top = (profileBounds?.bottom ?? pointY) + 12;
     }
