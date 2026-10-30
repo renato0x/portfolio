@@ -637,21 +637,9 @@ function ProfilePhotoHoverPreview({ src, label }: { src: string; label: string }
     let top = pointY - size - 42;
 
     if (isCompact) {
-      const roleBounds = document.querySelector(".profile-role")?.getBoundingClientRect();
-      const musicBounds = document.querySelector(".music-card")?.getBoundingClientRect();
-      const adjacentLeft = (roleBounds?.right ?? profileBounds?.right ?? window.innerWidth) + gap;
-      const adjacentSpace = window.innerWidth - margin - adjacentLeft;
-
-      if (adjacentSpace >= 48) {
-        size = Math.min(68, adjacentSpace);
-        left = adjacentLeft;
-        top = (profileBounds?.top ?? pointY) - 10;
-      } else {
-        top = (roleBounds?.bottom ?? profileBounds?.bottom ?? pointY) + 2;
-        const availableHeight = musicBounds ? musicBounds.top - top - 2 : 56;
-        size = Math.max(40, Math.min(56, availableHeight, window.innerWidth - margin * 2));
-        left = window.innerWidth - size - margin;
-      }
+      size = Math.min(240, window.innerWidth - margin * 2);
+      left = (window.innerWidth - size) / 2;
+      top = (profileBounds?.bottom ?? pointY) + 12;
     }
 
     if (!isCompact && left + size > window.innerWidth - margin) left = pointX - size - gap;
