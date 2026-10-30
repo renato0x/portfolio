@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import { motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
+import { CodeLeafText } from "@/components/ui/code-leaf";
+import type { CodeLeafMark } from "@/components/ui/code-leaf";
 import { EncryptedText } from "@/components/ui/encrypted-text";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 
@@ -33,6 +36,7 @@ type PageCopy = {
   content: string;
   about: string;
   bio: string;
+  bioHighlights: readonly CodeLeafMark[];
   technologies: string;
   technologyList: string;
   projects: string;
@@ -101,6 +105,10 @@ const copy: Record<Language, PageCopy> = {
     content: "Conteúdo do portfólio",
     about: "Sobre Renato",
     bio: "Sou o Renato, tenho 18 anos e curso Análise e Desenvolvimento de Sistemas no IFNMG, em Montes Claros. Já estou no meu terceiro curso na área de desenvolvimento de sistemas. Desde cedo, sou curioso sobre tecnologia e sempre quis entender como as coisas funcionam. Aprendi muito na prática: fuçando computadores, experimentando programação e seguindo cada dúvida até encontrar uma resposta. Ainda estou descobrindo meu espaço na área, mas gosto justamente desse processo — testar, errar e, aos poucos, entender o que acontece por trás da tela.",
+    bioHighlights: [
+      { term: "IFNMG", description: "Instituto Federal do Norte de Minas Gerais" },
+      { term: "desenvolvimento de sistemas", description: "Ensino técnico profissionalizante" },
+    ],
     technologies: "Tecnologias usadas",
     technologyList: "Tecnologias",
     projects: "Projetos",
@@ -121,7 +129,11 @@ const copy: Record<Language, PageCopy> = {
     title: "@renato0x",
     content: "Portfolio content",
     about: "About Renato",
-    bio: "I'm Renato, 18, studying Systems Analysis and Development at IFNMG in Montes Claros. I'm now on my third course in Systems Development. I've been curious about technology for as long as I can remember, always wanting to understand how things work. I've learned a lot by doing: tinkering with computers, trying out programming, and following each question until I find an answer. I'm still figuring out where I fit in the field, but I enjoy the process: trying things, making mistakes, and gradually understanding what's happening behind the screen.",
+    bio: "I'm Renato, 18, studying Systems Analysis and Development at IFNMG in Montes Claros. I'm now on my third course in systems development. I've been curious about technology for as long as I can remember, always wanting to understand how things work. I've learned a lot by doing: tinkering with computers, trying out programming, and following each question until I find an answer. I'm still figuring out where I fit in the field, but I enjoy the process: trying things, making mistakes, and gradually understanding what's happening behind the screen.",
+    bioHighlights: [
+      { term: "IFNMG", description: "Federal Institute of Northern Minas Gerais" },
+      { term: "systems development", description: "Vocational technical education" },
+    ],
     technologies: "Technologies",
     technologyList: "Technologies",
     projects: "Projects",
@@ -141,64 +153,68 @@ const copy: Record<Language, PageCopy> = {
 };
 
 function LocaleSwap({
-  token,
   children,
   className = "",
   block = false,
-  delay = 0,
   ready,
   ariaHidden = false,
+  transitionId,
+  highlightTerms = [],
 }: {
-  token: string;
-  children: ReactNode;
+  children: string;
   className?: string;
   block?: boolean;
-  delay?: number;
   ready: boolean;
   ariaHidden?: boolean;
+  transitionId: number;
+  highlightTerms?: readonly CodeLeafMark[];
 }) {
   const reduceMotion = useReducedMotion();
+  const [activeTransition, setActiveTransition] = useState(0);
+  const completedTransition = useRef(0);
   const slotClass = `locale-slot${block ? " locale-slot--block" : ""}${className ? ` ${className}` : ""}`;
   const textClass = `locale-swap${block ? " locale-swap--block" : ""}`;
 
-  if (!ready || reduceMotion) {
-    return <span className={slotClass} aria-hidden={ariaHidden || undefined}>{children}</span>;
+  useLayoutEffect(() => {
+    if (!ready || reduceMotion || transitionId === 0) return;
+
+    if (completedTransition.current !== transitionId) {
+      completedTransition.current = transitionId;
+      setActiveTransition(transitionId);
+    }
+
+    const timeout = window.setTimeout(() => {
+      setActiveTransition((current) => current === transitionId ? 0 : current);
+    }, 650);
+
+    return () => window.clearTimeout(timeout);
+  }, [ready, reduceMotion, transitionId]);
+
+  if (!ready || reduceMotion || activeTransition !== transitionId || transitionId === 0) {
+    return (
+      <span className={slotClass} aria-hidden={ariaHidden || undefined}>
+        <span className={textClass}>
+          <CodeLeafText text={children} terms={highlightTerms} />
+        </span>
+      </span>
+    );
   }
 
   return (
-    <motion.span
-      layout
-      className={slotClass}
-      aria-hidden={ariaHidden || undefined}
-      transition={{ layout: { duration: 0.24, ease: [0.22, 1, 0.36, 1] } }}
-    >
-      <AnimatePresence initial={false} mode="wait">
-        <motion.span
-          key={token}
-          className={textClass}
-          initial={{ opacity: 0, x: -5, clipPath: "inset(0 100% 0 0)" }}
-          animate={{ opacity: 1, x: 0, clipPath: "inset(0 0% 0 0)" }}
-          exit={{
-            opacity: 0,
-            x: 4,
-            clipPath: "inset(0 0 0 100%)",
-            transition: { duration: 0.14, ease: [0.4, 0, 1, 1] },
-          }}
-          transition={{ duration: 0.32, delay, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {children}
-          <motion.span
-            className="locale-ascii-trace"
-            aria-hidden="true"
-            initial={{ opacity: 0, scaleX: 0.25 }}
-            animate={{ opacity: [0, 0.78, 0], scaleX: [0.25, 1, 0.4] }}
-            transition={{ duration: 0.44, delay: delay + 0.04, ease: "easeOut" }}
-          >
-            .:=+*#@
-          </motion.span>
-        </motion.span>
-      </AnimatePresence>
-    </motion.span>
+    <span className={slotClass} aria-hidden={ariaHidden || undefined}>
+      <EncryptedText
+        key={transitionId}
+        text={children}
+        highlightTerms={highlightTerms}
+        className={`${textClass} locale-glitch`}
+        revealMode="organic"
+        revealDurationMs={560}
+        flipDelayMs={42}
+        glitchIntervalMs={0}
+        charset=".:=+*#@"
+        encryptedClassName="text-neutral-400"
+      />
+    </span>
   );
 }
 
@@ -592,9 +608,179 @@ function AsciiField() {
   return <canvas ref={canvasRef} className="ascii-field" aria-hidden="true" />;
 }
 
+function ProfilePhotoHoverPreview({ src, label }: { src: string; label: string }) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const hasPreviewPosition = useRef(false);
+  const previousPointerX = useRef<number | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [previewSize, setPreviewSize] = useState(108);
+  const reduceMotion = useReducedMotion();
+  const targetX = useMotionValue(-120);
+  const targetY = useMotionValue(-120);
+  const targetRotate = useMotionValue(0);
+  const x = useSpring(targetX, { stiffness: 300, damping: 30, mass: 0.3 });
+  const y = useSpring(targetY, { stiffness: 300, damping: 30, mass: 0.3 });
+  const rotate = useSpring(targetRotate, { stiffness: 300, damping: 20, mass: 0.3 });
+
+  useEffect(() => setIsMounted(true), []);
+
+  const placePreview = (pointX: number, pointY: number) => {
+    const isCompact = window.matchMedia("(max-width: 760px)").matches;
+    const margin = 12;
+    const gap = isCompact ? 8 : 16;
+    const profileBounds = triggerRef.current?.closest(".profile-head")?.getBoundingClientRect();
+    let size = 108;
+    let left = pointX + gap;
+    let top = pointY - size - 42;
+
+    if (isCompact) {
+      const roleBounds = document.querySelector(".profile-role")?.getBoundingClientRect();
+      const musicBounds = document.querySelector(".music-card")?.getBoundingClientRect();
+      const adjacentLeft = (roleBounds?.right ?? profileBounds?.right ?? window.innerWidth) + gap;
+      const adjacentSpace = window.innerWidth - margin - adjacentLeft;
+
+      if (adjacentSpace >= 48) {
+        size = Math.min(68, adjacentSpace);
+        left = adjacentLeft;
+        top = (profileBounds?.top ?? pointY) - 10;
+      } else {
+        top = (roleBounds?.bottom ?? profileBounds?.bottom ?? pointY) + 2;
+        const availableHeight = musicBounds ? musicBounds.top - top - 2 : 56;
+        size = Math.max(40, Math.min(56, availableHeight, window.innerWidth - margin * 2));
+        left = window.innerWidth - size - margin;
+      }
+    }
+
+    if (!isCompact && left + size > window.innerWidth - margin) left = pointX - size - gap;
+    if (!isCompact && top < margin) top = pointY + gap;
+    if (top + size > window.innerHeight - margin) top = pointY - size - gap;
+
+    const nextX = Math.max(margin, Math.min(left, window.innerWidth - size - margin));
+    const nextY = Math.max(margin, Math.min(top, window.innerHeight - size - margin));
+
+    setPreviewSize(size);
+    if (!hasPreviewPosition.current || reduceMotion) {
+      x.jump(nextX);
+      y.jump(nextY);
+      rotate.jump(0);
+      hasPreviewPosition.current = true;
+    }
+    targetX.set(nextX);
+    targetY.set(nextY);
+  };
+
+  const placeAtTrigger = (trigger: HTMLButtonElement) => {
+    const bounds = trigger.getBoundingClientRect();
+    placePreview(bounds.right, bounds.top + bounds.height / 2);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const closeOnTouchOutside = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || triggerRef.current?.contains(event.target as Node)) return;
+      setIsOpen(false);
+    };
+    const closeOnScroll = () => setIsOpen(false);
+
+    window.addEventListener("pointerdown", closeOnTouchOutside);
+    window.addEventListener("scroll", closeOnScroll, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", closeOnTouchOutside);
+      window.removeEventListener("scroll", closeOnScroll);
+    };
+  }, [isOpen]);
+
+  const preview = isMounted ? createPortal(
+    <motion.div
+      id="profile-photo-preview"
+      className="profile-photo-preview"
+      style={{ x, y, rotate, width: previewSize, height: previewSize }}
+      initial={{ opacity: 0, scale: 0.94 }}
+      animate={isOpen ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.94 }}
+      transition={reduceMotion ? { duration: 0 } : {
+        opacity: { duration: 0.16, ease: "easeOut" },
+        scale: { type: "spring", stiffness: 360, damping: 28 },
+      }}
+      aria-hidden="true"
+    >
+      <img src={src} alt="" width="320" height="320" draggable={false} />
+    </motion.div>,
+    document.body,
+  ) : null;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="avatar-preview-trigger"
+        aria-label={label}
+        aria-controls="profile-photo-preview"
+        aria-expanded={isOpen}
+        onPointerEnter={(event) => {
+          if (event.pointerType === "touch") return;
+          previousPointerX.current = event.clientX;
+          targetRotate.set(0);
+          placePreview(event.clientX, event.clientY);
+          setIsOpen(true);
+        }}
+        onPointerMove={(event) => {
+          if (event.pointerType === "touch" || !isOpen || reduceMotion) return;
+          placePreview(event.clientX, event.clientY);
+          if (previousPointerX.current !== null) {
+            const deltaX = event.clientX - previousPointerX.current;
+            targetRotate.set(Math.max(-6, Math.min(6, deltaX * 0.85)));
+          }
+          previousPointerX.current = event.clientX;
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType !== "touch" && !event.currentTarget.matches(":focus-visible")) {
+            previousPointerX.current = null;
+            targetRotate.set(0);
+            setIsOpen(false);
+          }
+        }}
+        onFocus={(event) => {
+          if (!event.currentTarget.matches(":focus-visible")) return;
+          placeAtTrigger(event.currentTarget);
+          setIsOpen(true);
+        }}
+        onBlur={() => setIsOpen(false)}
+        onClick={(event) => {
+          if (!window.matchMedia("(hover: none)").matches) return;
+          if (event.detail === 0) {
+            placeAtTrigger(event.currentTarget);
+            setIsOpen(true);
+            return;
+          }
+          const next = !isOpen;
+          if (next) placeAtTrigger(event.currentTarget);
+          setIsOpen(next);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setIsOpen(false);
+            return;
+          }
+          if (event.key === "Enter" || event.key === " ") {
+            placeAtTrigger(event.currentTarget);
+            setIsOpen(true);
+          }
+        }}
+      >
+        <img className="avatar" src={src} alt="" width="256" height="256" />
+      </button>
+      {preview}
+    </>
+  );
+}
+
 export default function PortfolioClient() {
   const [language, setLanguage] = useState<Language>("en");
   const [localeMotionReady, setLocaleMotionReady] = useState(false);
+  const [localeTransitionId, setLocaleTransitionId] = useState(0);
   const reduceMotion = useReducedMotion();
   const [stars, setStars] = useState<Record<ProjectName, number>>({
     CashPad: 1,
@@ -758,6 +944,7 @@ export default function PortfolioClient() {
 
   const changeLanguage = (nextLanguage: Language) => {
     if (nextLanguage === language) return;
+    setLocaleTransitionId((current) => current + 1);
     setLanguage(nextLanguage);
     try {
       window.localStorage.setItem(languageKey, nextLanguage);
@@ -803,7 +990,16 @@ export default function PortfolioClient() {
             <h1 className="sr-only">Renato Monteiro</h1>
             <section className="bio-block" aria-label={aboutLabel}>
               <span className="entry-ascii" aria-hidden="true">.:=+*#@</span>
-              <p><LocaleSwap token={`bio-${language}`} block delay={0} ready={localeMotionReady}>{currentCopy.bio}</LocaleSwap></p>
+              <p>
+                <LocaleSwap
+                  block
+                  ready={localeMotionReady}
+                  transitionId={localeTransitionId}
+                  highlightTerms={currentCopy.bioHighlights}
+                >
+                  {currentCopy.bio}
+                </LocaleSwap>
+              </p>
             </section>
 
             <section className="stacks" aria-label={technologiesLabel}>
@@ -815,7 +1011,7 @@ export default function PortfolioClient() {
                   </li>
                 ))}
               </ul>
-              <LocaleSwap token={`caption-${language}`} className="stack-caption" delay={0.07} ready={localeMotionReady} ariaHidden>
+              <LocaleSwap className="stack-caption" ready={localeMotionReady} transitionId={localeTransitionId} ariaHidden>
                 {language === "pt" ? "> projetos" : "> projects"}
               </LocaleSwap>
             </section>
@@ -841,7 +1037,7 @@ export default function PortfolioClient() {
                     </div>
                     <div className="project-copy">
                       <h3>{project.name}</h3>
-                      <p><LocaleSwap token={`${project.name}-${language}`} block delay={0.12 + index * 0.055} ready={localeMotionReady}>{project.description[language]}</LocaleSwap></p>
+                      <p><LocaleSwap block ready={localeMotionReady} transitionId={localeTransitionId}>{project.description[language]}</LocaleSwap></p>
                     </div>
                     <div className="project-meta">
                       <span className="language">
@@ -876,24 +1072,23 @@ export default function PortfolioClient() {
           <aside className="profile-column" aria-label={profileLabel}>
             <span className="entry-ascii entry-ascii--profile" aria-hidden="true">.:=+*#@</span>
             <div className="profile-head">
-              <img
-                className="avatar"
-                src="/assets/renato-github-color.png"
-                alt={language === "pt" ? "Foto de perfil de Renato Monteiro" : "Profile image of Renato Monteiro"}
-                width="256"
-                height="256"
+              <ProfilePhotoHoverPreview
+                src="/assets/renato-github.webp"
+                label={language === "pt" ? "Prévia da foto de perfil de Renato Monteiro" : "Preview Renato Monteiro's profile photo"}
               />
-              <div>
-                <EncryptedText
-                  text="Renato Monteiro"
-                  className="profile-name"
-                  encryptedClassName="text-neutral-500"
-                  revealedClassName="text-white"
-                  revealDelayMs={50}
-                  flipDelayMs={50}
-                />
+              <div className="profile-details">
+                <span className="profile-name-wrap">
+                  <EncryptedText
+                    text="Renato Monteiro"
+                    className="profile-name"
+                    encryptedClassName="text-neutral-500"
+                    revealedClassName="text-white"
+                    revealDelayMs={50}
+                    flipDelayMs={50}
+                  />
+                </span>
                 <p className="profile-role">
-                  <LocaleSwap token={`role-${language}`} delay={0.05} ready={localeMotionReady}>
+                  <LocaleSwap ready={localeMotionReady} transitionId={localeTransitionId}>
                     {language === "pt" ? "Desenvolvedor de software · ADS, IFNMG" : "Software developer · Systems Analysis, IFNMG"}
                   </LocaleSwap>
                 </p>
@@ -930,7 +1125,7 @@ export default function PortfolioClient() {
                     <img className="spotify-mark" src="/assets/social/spotify.svg" alt="" width="13" height="13" />
                     <span>Spotify</span>
                   </span>
-                  <LocaleSwap token={`music-state-${language}-${track?.source ?? "empty"}`} className="music-state" delay={0.16} ready={localeMotionReady}>
+                  <LocaleSwap className="music-state" ready={localeMotionReady} transitionId={localeTransitionId}>
                     {track?.source === "spotify"
                       ? currentCopy.listening
                       : track?.source === "discord"

@@ -1,19 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { motion, useInView, useReducedMotion } from "motion/react";
+import { CodeLeaf, getCodeLeafRanges } from "@/components/ui/code-leaf";
+import type { CodeLeafMark } from "@/components/ui/code-leaf";
 import { cn } from "@/lib/utils";
 
 type EncryptedTextProps = {
   text: string;
   className?: string;
   revealDelayMs?: number;
+  revealMode?: "sequential" | "organic";
+  revealDurationMs?: number;
   glitchIntervalMs?: number;
   charset?: string;
   flipDelayMs?: number;
   encryptedClassName?: string;
   revealedClassName?: string;
+  highlightTerms?: readonly CodeLeafMark[];
 };
+
+const EMPTY_HIGHLIGHT_TERMS: readonly CodeLeafMark[] = [];
 
 const DEFAULT_CHARSET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-={}[];:,.<>/?";
@@ -39,23 +47,54 @@ function randomScramble(text: string, charset: string) {
   );
 }
 
+function hash32(value: number) {
+  let result = value | 0;
+  result = Math.imul(result ^ (result >>> 16), 0x45d9f3b);
+  result = Math.imul(result ^ (result >>> 16), 0x45d9f3b);
+  return (result ^ (result >>> 16)) >>> 0;
+}
+
+function organicRevealRanks(text: string) {
+  let seed = 2166136261;
+  for (const character of text) {
+    seed ^= character.codePointAt(0) ?? 0;
+    seed = Math.imul(seed, 16777619);
+  }
+
+  return Array.from(text, (_, index) => {
+    const cluster = Math.floor(index / 3);
+    const clusterNoise = hash32(seed ^ Math.imul(cluster + 1, 0x9e3779b1)) / 0xffffffff;
+    const characterNoise = hash32(seed ^ Math.imul(index + 1, 0x85ebca6b)) / 0xffffffff;
+    return clusterNoise * 0.78 + characterNoise * 0.22;
+  });
+}
+
 export function EncryptedText({
   text,
   className,
   revealDelayMs = 50,
+  revealMode = "sequential",
+  revealDurationMs = 560,
   glitchIntervalMs = 15_000,
   charset = DEFAULT_CHARSET,
   flipDelayMs = 50,
   encryptedClassName,
   revealedClassName,
+  highlightTerms = EMPTY_HIGHLIGHT_TERMS,
 }: EncryptedTextProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const isInView = useInView(ref, { once: true });
   const prefersReducedMotion = useReducedMotion();
   const [revealCount, setRevealCount] = useState(0);
+  const [organicProgress, setOrganicProgress] = useState(0);
   const [scrambleChars, setScrambleChars] = useState(() =>
     stableScramble(text, charset),
+  );
+  const revealRanks = useMemo(() => organicRevealRanks(text), [text]);
+  const highlightRanges = useMemo(
+    () => getCodeLeafRanges(text, highlightTerms),
+    [highlightTerms, text],
   );
 
   useEffect(() => {
@@ -69,35 +108,58 @@ export function EncryptedText({
 
     if (reduceMotion) {
       setRevealCount(totalLength);
+      setOrganicProgress(1);
       return;
     }
 
     let cancelled = false;
     let lastRevealCount = -1;
     let lastFlipTime = 0;
+    let lastOrganicBucket = -1;
+    let activeOrganicProgress = 0;
     const startTime = performance.now();
     setScrambleChars(randomScramble(text, charset));
     setRevealCount(0);
+    setOrganicProgress(0);
 
     const update = (now: number) => {
       if (cancelled) return;
 
-      const currentRevealCount = Math.min(
-        totalLength,
-        Math.floor((now - startTime) / Math.max(1, revealDelayMs)),
-      );
+      if (revealMode === "organic") {
+        const rawProgress = Math.min(
+          1,
+          (now - startTime) / Math.max(180, revealDurationMs),
+        );
+        const easedProgress = 1 - (1 - rawProgress) ** 1.45;
+        const bucket = Math.floor(easedProgress * 28);
+        activeOrganicProgress = rawProgress >= 1 ? 1 : easedProgress;
 
-      if (currentRevealCount !== lastRevealCount) {
-        lastRevealCount = currentRevealCount;
-        setRevealCount(currentRevealCount);
+        if (bucket !== lastOrganicBucket || rawProgress >= 1) {
+          lastOrganicBucket = bucket;
+          setOrganicProgress(activeOrganicProgress);
+        }
+
+        if (rawProgress >= 1) return;
+      } else {
+        const currentRevealCount = Math.min(
+          totalLength,
+          Math.floor((now - startTime) / Math.max(1, revealDelayMs)),
+        );
+
+        if (currentRevealCount !== lastRevealCount) {
+          lastRevealCount = currentRevealCount;
+          setRevealCount(currentRevealCount);
+        }
+
+        if (currentRevealCount >= totalLength) return;
       }
-
-      if (currentRevealCount >= totalLength) return;
 
       if (now - lastFlipTime >= Math.max(0, flipDelayMs)) {
         setScrambleChars((current) =>
           current.map((character, index) =>
-            index < currentRevealCount || characters[index] === " "
+            (revealMode === "organic"
+              ? activeOrganicProgress >= (revealRanks[index] ?? 1)
+              : index < lastRevealCount) || characters[index] === " "
               ? character
               : randomCharacter(charset),
           ),
@@ -116,7 +178,7 @@ export function EncryptedText({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [charset, flipDelayMs, isInView, prefersReducedMotion, revealDelayMs, text]);
+  }, [charset, flipDelayMs, isInView, prefersReducedMotion, revealDelayMs, revealMode, revealDurationMs, revealRanks, text]);
 
   useEffect(() => {
     if (!isInView || glitchIntervalMs <= 0) return;
@@ -188,34 +250,51 @@ export function EncryptedText({
 
   if (!text) return null;
   const characters = Array.from(text);
+  const characterNodes = characters.map((character, index) => {
+    const isRevealed = revealMode === "organic"
+      ? character === " " || organicProgress >= (revealRanks[index] ?? 1)
+      : index < revealCount;
+    const displayCharacter = isRevealed
+      ? character
+      : character === " "
+        ? " "
+        : (scrambleChars[index] ?? character);
+
+    return (
+      <span
+        key={`${index}-${character}`}
+        className={cn(
+          isRevealed ? revealedClassName : encryptedClassName,
+        )}
+        aria-hidden="true"
+      >
+        {displayCharacter}
+      </span>
+    );
+  });
+  const content: ReactNode[] = [];
+  let cursor = 0;
+
+  highlightRanges.forEach(({ start, end, mark }) => {
+    content.push(...characterNodes.slice(cursor, start));
+    content.push(
+      <CodeLeaf key={`code-leaf-${start}`} mark={mark}>
+        {characterNodes.slice(start, end)}
+      </CodeLeaf>,
+    );
+    cursor = end;
+  });
+
+  content.push(...characterNodes.slice(cursor));
 
   return (
     <motion.span
       ref={ref}
       className={cn(className)}
       aria-label={text}
-      role="text"
+      role="group"
     >
-      {characters.map((character, index) => {
-        const isRevealed = index < revealCount;
-        const displayCharacter = isRevealed
-          ? character
-          : character === " "
-            ? " "
-            : (scrambleChars[index] ?? character);
-
-        return (
-          <span
-            key={`${index}-${character}`}
-            className={cn(
-              isRevealed ? revealedClassName : encryptedClassName,
-            )}
-            aria-hidden="true"
-          >
-            {displayCharacter}
-          </span>
-        );
-      })}
+      {content}
     </motion.span>
   );
 }
