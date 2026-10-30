@@ -311,7 +311,16 @@ function AsciiField() {
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const hoverQuery = window.matchMedia("(any-hover: hover) and (any-pointer: fine)");
     const chars = " .,:;-=+*#%@";
+    const dotChars = ".:";
     const wake: Array<{ x: number; y: number; time: number; energy: number }> = [];
+    const maskTargets: Array<{ selector: string; strength: number; feather: number }> = [
+      { selector: ".bio-block", strength: 0.72, feather: 42 },
+      { selector: ".stacks", strength: 0.36, feather: 30 },
+      { selector: ".projects", strength: 0.24, feather: 38 },
+      { selector: ".profile-column", strength: 0.52, feather: 48 },
+      { selector: ".utility", strength: 0.46, feather: 28 },
+    ];
+    let contentMaskZones: Array<{ left: number; top: number; right: number; bottom: number; strength: number; feather: number }> = [];
     let time = 0;
     let stormElapsed = 0;
     let nextStormFlashAt = 18_000 + Math.random() * 10_000;
@@ -324,6 +333,69 @@ function AsciiField() {
     let finePointer = hoverQuery.matches;
     let lastWakePoint: { x: number; y: number; time: number } | null = null;
 
+    const clamp = (value: number, minimum: number, maximum: number) => Math.max(minimum, Math.min(maximum, value));
+    const smoothStep = (value: number) => {
+      const normalized = clamp(value, 0, 1);
+      return normalized * normalized * (3 - 2 * normalized);
+    };
+    const cellNoise = (column: number, row: number, variant = 0) => {
+      const value = Math.sin(column * 127.1 + row * 311.7 + variant * 74.7) * 43758.5453123;
+      return value - Math.floor(value);
+    };
+
+    const refreshContentMask = () => {
+      const canvasBounds = canvas.getBoundingClientRect();
+      contentMaskZones = maskTargets.flatMap((target) => Array.from(document.querySelectorAll<HTMLElement>(target.selector)).map((element) => {
+        const bounds = element.getBoundingClientRect();
+        return {
+          left: bounds.left - canvasBounds.left,
+          top: bounds.top - canvasBounds.top,
+          right: bounds.right - canvasBounds.left,
+          bottom: bounds.bottom - canvasBounds.top,
+          strength: target.strength,
+          feather: target.feather,
+        };
+      }));
+    };
+
+    const contentMask = (x: number, y: number) => {
+      let visibility = 1;
+      for (const zone of contentMaskZones) {
+        const outsideX = x < zone.left ? zone.left - x : x > zone.right ? x - zone.right : 0;
+        const outsideY = y < zone.top ? zone.top - y : y > zone.bottom ? y - zone.bottom : 0;
+        const distance = Math.hypot(outsideX, outsideY);
+        if (distance >= zone.feather) continue;
+
+        const influence = 1 - smoothStep(distance / zone.feather);
+        visibility *= 1 - zone.strength * influence;
+      }
+      return visibility;
+    };
+
+    const dotWave = { opacity: 0.62, offsetX: 0, offsetY: 0 };
+    const sampleDotWave = (x: number, y: number, elapsedSeconds: number) => {
+      if (reduceMotion) {
+        dotWave.opacity = 0.62;
+        dotWave.offsetX = 0;
+        dotWave.offsetY = 0;
+        return dotWave;
+      }
+
+      const normalizedX = x / Math.max(width, 1);
+      const normalizedY = y / Math.max(height, 1);
+      const primary = Math.sin(normalizedX * 6.3 + normalizedY * 3.7 - elapsedSeconds * 0.18);
+      const cross = Math.sin(
+        normalizedX * -2.4 + normalizedY * 7.1 + elapsedSeconds * 0.115 + Math.sin(elapsedSeconds * 0.06) * 0.85,
+      );
+      const ripple = Math.sin((normalizedX + normalizedY) * 10.5 - elapsedSeconds * 0.075 + Math.sin(normalizedX * 1.7 - normalizedY * 1.2) * 0.5);
+      const field = (primary * 0.5 + cross * 0.36 + ripple * 0.14 + 1) * 0.5;
+
+      dotWave.opacity = 0.28 + smoothStep(field) * 0.56;
+      dotWave.offsetX = primary * 1.15 + cross * 0.55 + ripple * 0.2;
+      dotWave.offsetY = -primary * 0.34 + cross * 0.8 - ripple * 0.3;
+      return dotWave;
+    };
+
     const getFieldValue = (x: number, y: number, nx: number, ny: number) => {
       const wave =
         Math.sin(nx * 9.4 + ny * 5.3 + time * 0.78) *
@@ -332,6 +404,49 @@ function AsciiField() {
         Math.sin(x * 0.039 + y * 0.031 + time * 0.6) *
         Math.cos(x * 0.012 - y * 0.021 + time * 0.37);
       return wave * 0.68 + grain * 0.32;
+    };
+
+    const drawGranularDots = (parallaxX: number, parallaxY: number) => {
+      const stepX = width < 760 ? 25 : 20;
+      const stepY = width < 760 ? 24 : 20;
+      const elapsedSeconds = stormElapsed / 1000;
+
+      for (let row = 0, y = 12; y < height; row += 1, y += stepY) {
+        for (let column = 0, x = 10; x < width; column += 1, x += stepX) {
+          const seed = cellNoise(column, row, 1);
+          if (seed > 0.25) continue;
+
+          const driftDepth = 0.22 + cellNoise(column, row, 2) * 0.42;
+          const parallaxDepth = 0.55 + cellNoise(column, row, 5) * 0.55;
+          const phase = elapsedSeconds * (0.15 + cellNoise(column, row, 3) * 0.1) + seed * 15;
+          const fadePhase = elapsedSeconds * (0.33 + cellNoise(column, row, 6) * 0.16) + seed * 47;
+          const pulse = reduceMotion ? 0.58 : 0.48 + Math.sin(phase) * 0.22;
+          const localFade = reduceMotion ? 0.92 : 0.76 + smoothStep((Math.sin(fadePhase) + 1) * 0.5) * 0.24;
+          const driftX = reduceMotion ? 0 : Math.sin(elapsedSeconds * 0.19 + seed * 27) * (0.28 + seed * 0.52);
+          const driftY = reduceMotion ? 0 : Math.cos(elapsedSeconds * 0.15 + seed * 19) * (0.22 + seed * 0.42);
+          const edgeDistance = Math.min(x, y, width - x, height - y);
+          const glyph = dotChars[cellNoise(column, row, 4) > 0.82 ? 1 : 0];
+          const offsetX = Math.round(-parallaxX * parallaxDepth * 4.2 + driftX * (0.76 + driftDepth));
+          const offsetY = Math.round(-parallaxY * parallaxDepth * 3.1 + driftY * (0.76 + driftDepth));
+          const renderedX = x + offsetX;
+          const renderedY = y + offsetY;
+          const wave = sampleDotWave(renderedX, renderedY, elapsedSeconds);
+          const maskedX = renderedX + wave.offsetX;
+          const maskedY = renderedY + wave.offsetY;
+          const alpha =
+            (0.12 + pulse * 0.17) *
+            smoothStep(edgeDistance / 74) *
+            contentMask(maskedX, maskedY) *
+            wave.opacity *
+            localFade;
+          if (alpha < 0.04) continue;
+
+          context.globalAlpha = Math.min(0.32, alpha);
+          context.fillStyle = "#dedede";
+          context.font = glyph === ":" ? "12px ui-monospace,monospace" : "11px ui-monospace,monospace";
+          context.fillText(glyph, maskedX + 16, maskedY + 16);
+        }
+      }
     };
 
     const findCloudCenter = () => {
@@ -446,8 +561,8 @@ function AsciiField() {
       context.clearRect(0, 0, width, height);
       context.font = "10px ui-monospace,monospace";
 
-      const parallaxX = !finePointer ? 0 : pointerX.get();
-      const parallaxY = !finePointer ? 0 : pointerY.get();
+      const parallaxX = reduceMotion || !finePointer ? 0 : pointerX.get();
+      const parallaxY = reduceMotion || !finePointer ? 0 : pointerY.get();
       if (!reduceMotion) {
         stormElapsed += delta;
 
@@ -556,6 +671,8 @@ function AsciiField() {
             }
           }
         }
+
+        drawGranularDots(parallaxX, parallaxY);
       }
 
       context.globalAlpha = 1;
@@ -585,10 +702,17 @@ function AsciiField() {
       width = 0;
       height = 0;
       clearWake();
+      refreshContentMask();
       if (!document.hidden) draw();
+    });
+    const layoutObserver = new ResizeObserver(() => {
+      refreshContentMask();
+      if (reduceMotion && !document.hidden) draw();
     });
 
     resizeObserver.observe(canvas);
+    document.querySelectorAll<HTMLElement>(".content-layout, .utility, .bio-block, .stacks, .projects, .profile-column").forEach((element) => layoutObserver.observe(element));
+    refreshContentMask();
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerleave", resetParallax);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -599,6 +723,7 @@ function AsciiField() {
     return () => {
       window.cancelAnimationFrame(frame);
       resizeObserver.disconnect();
+      layoutObserver.disconnect();
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", resetParallax);
       document.removeEventListener("visibilitychange", handleVisibility);
