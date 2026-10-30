@@ -689,8 +689,24 @@ export default function PortfolioClient() {
                         : currentCopy.noPlayback}
                   </span>
                 </div>
-                <h2 className="music-title">{track.title}</h2>
-                <p className="music-artist">{track.artist}</p>
+                <h2 className="music-title">
+                  <EncryptedText
+                    text={track.title}
+                    encryptedClassName="text-neutral-500"
+                    revealDelayMs={32}
+                    flipDelayMs={28}
+                    glitchIntervalMs={0}
+                  />
+                </h2>
+                <p className="music-artist">
+                  <EncryptedText
+                    text={track.artist}
+                    encryptedClassName="text-neutral-500"
+                    revealDelayMs={32}
+                    flipDelayMs={28}
+                    glitchIntervalMs={0}
+                  />
+                </p>
               </div>
             </section>
           </aside>
