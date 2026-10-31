@@ -21,6 +21,9 @@ type Track = {
   source: TrackSource;
 };
 
+const profileDisplayName = "Renato Monteiro";
+const profileAlias = "renato0x";
+
 type Project = {
   name: ProjectName;
   featured?: boolean;
@@ -982,6 +985,7 @@ export default function PortfolioClient() {
   });
   const [track, setTrack] = useState<Track | null>(null);
   const [failedCover, setFailedCover] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState(profileDisplayName);
   const currentCopy = copy[language];
 
   useEffect(() => {
@@ -1001,6 +1005,32 @@ export default function PortfolioClient() {
     document.documentElement.lang = language === "en" ? "en" : "pt-BR";
     document.title = currentCopy.title;
   }, [currentCopy.title, language]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+
+    let timeout: number | null = null;
+    let cancelled = false;
+
+    const scheduleAliasGlitch = () => {
+      timeout = window.setTimeout(() => {
+        if (cancelled) return;
+        setProfileName(profileAlias);
+
+        timeout = window.setTimeout(() => {
+          if (cancelled) return;
+          setProfileName(profileDisplayName);
+          scheduleAliasGlitch();
+        }, 1_350);
+      }, 12_000 + Math.random() * 12_000);
+    };
+
+    scheduleAliasGlitch();
+    return () => {
+      cancelled = true;
+      if (timeout !== null) window.clearTimeout(timeout);
+    };
+  }, [reduceMotion]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1262,12 +1292,13 @@ export default function PortfolioClient() {
             <div className="profile-head">
               <ProfilePhotoHoverPreview
                 src="/assets/renato-github.webp"
-                label={language === "pt" ? "Prévia da foto de perfil de renato0x" : "Preview renato0x's profile photo"}
+                label={language === "pt" ? "Prévia da foto de perfil de Renato Monteiro" : "Preview Renato Monteiro's profile photo"}
               />
               <div className="profile-details">
                 <span className="profile-name-wrap">
                   <EncryptedText
-                    text="renato0x"
+                    key={profileName}
+                    text={profileName}
                     className="profile-name"
                     encryptedClassName="text-neutral-500"
                     revealedClassName="text-white"
