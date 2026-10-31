@@ -1029,7 +1029,7 @@ export default function PortfolioClient() {
             scheduleAliasGlitch();
           }, 700);
         }, 4_000);
-      }, 12_000 + Math.random() * 12_000);
+      }, 10_000 + Math.random() * 10_000);
     };
 
     scheduleAliasGlitch();
