@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://renatoox.vercel.app"),
-  title: "renato0x — projetos e experimentos",
+  title: "@renato0x in instagram",
   description:
     "Projeto pessoal de Renato Monteiro para experimentar animações com Motion, estética ASCII e reunir projetos, contatos e música em reprodução.",
   keywords: [
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   creator: "Renato Monteiro",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "renato0x — projetos e experimentos",
+    title: "@renato0x in instagram",
     description:
       "Um site pessoal para experimentar animações com Motion, estética ASCII e reunir projetos, contatos e música em reprodução.",
     url: "/",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "renato0x — projetos e experimentos",
+    title: "@renato0x in instagram",
     description:
       "Um site pessoal para experimentar animações com Motion, estética ASCII e reunir projetos, contatos e música em reprodução.",
   },
