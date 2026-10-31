@@ -21,7 +21,6 @@ type Track = {
   source: TrackSource;
 };
 
-const profileDisplayName = "Renato Monteiro";
 const profileAlias = "renato0x";
 
 type Project = {
@@ -985,7 +984,7 @@ export default function PortfolioClient() {
   });
   const [track, setTrack] = useState<Track | null>(null);
   const [failedCover, setFailedCover] = useState<string | null>(null);
-  const [profileName, setProfileName] = useState(profileDisplayName);
+  const [isProfileAliasVisible, setIsProfileAliasVisible] = useState(false);
   const currentCopy = copy[language];
 
   useEffect(() => {
@@ -1015,13 +1014,13 @@ export default function PortfolioClient() {
     const scheduleAliasGlitch = () => {
       timeout = window.setTimeout(() => {
         if (cancelled) return;
-        setProfileName(profileAlias);
+        setIsProfileAliasVisible(true);
 
         timeout = window.setTimeout(() => {
           if (cancelled) return;
-          setProfileName(profileDisplayName);
+          setIsProfileAliasVisible(false);
           scheduleAliasGlitch();
-        }, 1_350);
+        }, 4_000);
       }, 12_000 + Math.random() * 12_000);
     };
 
@@ -1296,15 +1295,17 @@ export default function PortfolioClient() {
               />
               <div className="profile-details">
                 <span className="profile-name-wrap">
-                  <EncryptedText
-                    key={profileName}
-                    text={profileName}
-                    className="profile-name"
-                    encryptedClassName="text-neutral-500"
-                    revealedClassName="text-white"
-                    revealDelayMs={50}
-                    flipDelayMs={50}
-                  />
+                  {isProfileAliasVisible
+                    ? <EncryptedText
+                        text={profileAlias}
+                        className="profile-name"
+                        encryptedClassName="text-neutral-500"
+                        revealedClassName="text-white"
+                        revealDelayMs={50}
+                        flipDelayMs={50}
+                        glitchIntervalMs={0}
+                      />
+                    : <span className="profile-name">Renato Monteiro</span>}
                 </span>
                 <p className="profile-role">
                   <LocaleSwap ready={localeMotionReady} transitionId={localeTransitionId}>
