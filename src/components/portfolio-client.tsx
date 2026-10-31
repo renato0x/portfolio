@@ -102,10 +102,10 @@ const projects: Project[] = [
 
 const copy: Record<Language, PageCopy> = {
   pt: {
-    title: "segue no insta",
+    title: "renato0x",
     content: "Conteúdo do portfólio",
-    about: "Sobre Renato",
-    bio: "Sou o Renato, tenho 18 anos e curso Análise e Desenvolvimento de Sistemas no IFNMG, em Montes Claros. Já estou no meu terceiro curso na área de desenvolvimento de sistemas. Desde cedo, sou curioso sobre tecnologia e sempre quis entender como as coisas funcionam. Aprendi muito na prática: fuçando computadores, experimentando programação e seguindo cada dúvida até encontrar uma resposta. Ainda estou descobrindo meu espaço na área, mas gosto justamente desse processo — testar, errar e, aos poucos, entender o que acontece por trás da tela.",
+    about: "Sobre renato0x",
+    bio: "Tenho 18 anos e curso Análise e Desenvolvimento de Sistemas no IFNMG, em Montes Claros. Já estou no meu terceiro curso na área de desenvolvimento de sistemas. Desde cedo, sou curioso sobre tecnologia e sempre quis entender como as coisas funcionam. Aprendi muito na prática: fuçando computadores, experimentando programação e seguindo cada dúvida até encontrar uma resposta. Ainda estou descobrindo meu espaço na área, mas gosto justamente desse processo — testar, errar e, aos poucos, entender o que acontece por trás da tela.",
     bioHighlights: [
       { term: "IFNMG", description: "Instituto Federal do Norte de Minas Gerais" },
       { term: "desenvolvimento de sistemas", description: "conclusão em 2028" },
@@ -115,7 +115,7 @@ const copy: Record<Language, PageCopy> = {
     projects: "Projetos",
     openProject: (name: string) => `Abrir o repositório ${name} no GitHub`,
     githubStars: "Estrelas no GitHub",
-    githubCommits: "commits de Renato no GitHub",
+    githubCommits: "commits de renato0x no GitHub",
     profile: "Perfil",
     socialLinks: "Redes sociais",
     spotify: "Spotify",
@@ -127,10 +127,10 @@ const copy: Record<Language, PageCopy> = {
     viaDiscord: "via Discord",
   },
   en: {
-    title: "follow on intagram",
+    title: "renato0x",
     content: "Portfolio content",
-    about: "About Renato",
-    bio: "I'm Renato, 18, studying Systems Analysis and Development at IFNMG in Montes Claros. I'm now on my third course in systems development. I've been curious about technology for as long as I can remember, always wanting to understand how things work. I've learned a lot by doing: tinkering with computers, trying out programming, and following each question until I find an answer. I'm still figuring out where I fit in the field, but I enjoy the process: trying things, making mistakes, and gradually understanding what's happening behind the screen.",
+    about: "About renato0x",
+    bio: "I'm 18, studying Systems Analysis and Development at IFNMG in Montes Claros. I'm now on my third course in systems development. I've been curious about technology for as long as I can remember, always wanting to understand how things work. I've learned a lot by doing: tinkering with computers, trying out programming, and following each question until I find an answer. I'm still figuring out where I fit in the field, but I enjoy the process: trying things, making mistakes, and gradually understanding what's happening behind the screen.",
     bioHighlights: [
       { term: "IFNMG", description: "Federal Institute of Northern Minas Gerais" },
       { term: "systems development", description: "expected completion in 2028" },
@@ -140,7 +140,7 @@ const copy: Record<Language, PageCopy> = {
     projects: "Projects",
     openProject: (name: string) => `Open the ${name} repository on GitHub`,
     githubStars: "GitHub stars",
-    githubCommits: "commits authored by Renato",
+    githubCommits: "commits authored by renato0x",
     profile: "Profile",
     socialLinks: "Social links",
     spotify: "Spotify",
@@ -1175,7 +1175,7 @@ export default function PortfolioClient() {
 
         <div className="content-layout">
           <section className="main-column" aria-label={currentCopy.content}>
-            <h1 className="sr-only">Renato Monteiro</h1>
+            <h1 className="sr-only">renato0x</h1>
             <section className="bio-block" aria-label={aboutLabel}>
               <span className="entry-ascii" aria-hidden="true">.:=+*#@</span>
               <p>
@@ -1262,12 +1262,12 @@ export default function PortfolioClient() {
             <div className="profile-head">
               <ProfilePhotoHoverPreview
                 src="/assets/renato-github.webp"
-                label={language === "pt" ? "Prévia da foto de perfil de Renato Monteiro" : "Preview Renato Monteiro's profile photo"}
+                label={language === "pt" ? "Prévia da foto de perfil de renato0x" : "Preview renato0x's profile photo"}
               />
               <div className="profile-details">
                 <span className="profile-name-wrap">
                   <EncryptedText
-                    text="Renato Monteiro"
+                    text="renato0x"
                     className="profile-name"
                     encryptedClassName="text-neutral-500"
                     revealedClassName="text-white"
