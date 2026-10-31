@@ -117,12 +117,10 @@ export function CodeLeaf({
   const hoverMotion = {
     y: -2,
     scale: 1.035,
-    boxShadow: "0 7px 18px rgb(0 0 0 / .22), inset 0 0 0 1px #626262",
   };
   const pressMotion = {
     y: 1,
     scale: 0.96,
-    boxShadow: "inset 0 2px 5px rgb(0 0 0 / .42), inset 0 0 0 1px #626262",
     transition: { type: "spring" as const, stiffness: 520, damping: 26 },
   };
 
