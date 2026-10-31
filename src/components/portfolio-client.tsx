@@ -325,7 +325,11 @@ function AsciiField() {
     let stormElapsed = 0;
     const nextStormInterval = () => 5_500 + Math.random() * 4_500;
     let nextStormFlashAt = nextStormInterval();
-    let stormFlash: { x: number; y: number; startedAt: number; duration: number; echoDelay: number; echoStrength: number } | null = null;
+    type StormNode = { x: number; y: number; delay: number; duration: number; strength: number; radiusScale: number };
+    type StormFlash = { startedAt: number; duration: number; nodes: StormNode[] };
+    type ActiveStormNode = { x: number; y: number; radiusSquared: number; envelope: number };
+    let stormFlash: StormFlash | null = null;
+    const activeStormNodes: ActiveStormNode[] = [];
     let frame = 0;
     let width = 0;
     let height = 0;
@@ -420,10 +424,7 @@ function AsciiField() {
     const drawGranularDots = (
       parallaxX: number,
       parallaxY: number,
-      flashEnvelope: number,
-      flashRadiusSquared: number,
-      flashX: number,
-      flashY: number,
+      stormNodes: ActiveStormNode[],
     ) => {
       const stepX = width < 760 ? 25 : 20;
       const stepY = width < 760 ? 24 : 20;
@@ -453,12 +454,12 @@ function AsciiField() {
           const maskedY = renderedY + wave.offsetY;
           let stormBoost = 0;
 
-          if (flashEnvelope > 0 && flashRadiusSquared > 0) {
-            const distanceSquared = (maskedX - flashX) ** 2 + (maskedY - flashY) ** 2;
+          for (const stormNode of stormNodes) {
+            const distanceSquared = (maskedX - stormNode.x) ** 2 + (maskedY - stormNode.y) ** 2;
 
-            if (distanceSquared < flashRadiusSquared) {
-              const falloff = 1 - distanceSquared / flashRadiusSquared;
-              stormBoost = falloff * falloff * flashEnvelope;
+            if (distanceSquared < stormNode.radiusSquared) {
+              const falloff = 1 - distanceSquared / stormNode.radiusSquared;
+              stormBoost = Math.max(stormBoost, falloff * falloff * stormNode.envelope);
             }
           }
 
@@ -501,6 +502,34 @@ function AsciiField() {
       }
 
       return { x: centerX / width, y: centerY / height };
+    };
+
+    const createStormFlash = (): StormFlash => {
+      const center = findCloudCenter();
+      const direction = Math.random() * Math.PI * 2;
+      const curve = (Math.random() - 0.5) * 0.9;
+      const placeNode = (distance: number, turn: number) => ({
+        x: clamp(center.x + Math.cos(direction + turn) * distance, 0.1, 0.9),
+        y: clamp(center.y + Math.sin(direction + turn) * distance * 0.78, 0.12, 0.88),
+      });
+      const firstDuration = 760 + Math.random() * 160;
+      const secondDelay = 460 + Math.random() * 160;
+      const secondDuration = 700 + Math.random() * 160;
+      const thirdDelay = secondDelay + 420 + Math.random() * 180;
+      const thirdDuration = 640 + Math.random() * 160;
+      const second = placeNode(0.15 + Math.random() * 0.05, curve);
+      const third = placeNode(0.29 + Math.random() * 0.07, curve * 1.75);
+      const nodes: StormNode[] = [
+        { ...center, delay: 0, duration: firstDuration, strength: 1, radiusScale: 1 },
+        { ...second, delay: secondDelay, duration: secondDuration, strength: 0.68, radiusScale: 0.82 },
+        { ...third, delay: thirdDelay, duration: thirdDuration, strength: 0.46, radiusScale: 0.66 },
+      ];
+
+      return {
+        startedAt: stormElapsed,
+        duration: thirdDelay + thirdDuration,
+        nodes,
+      };
     };
 
     const clearWake = () => {
@@ -597,14 +626,7 @@ function AsciiField() {
         stormElapsed += delta;
 
         if (!stormFlash && stormElapsed >= nextStormFlashAt && width > 0 && height > 0) {
-          const center = findCloudCenter();
-          stormFlash = {
-            ...center,
-            startedAt: stormElapsed,
-            duration: 520 + Math.random() * 300,
-            echoDelay: 0.24 + Math.random() * 0.12,
-            echoStrength: 0.36 + Math.random() * 0.14,
-          };
+          stormFlash = createStormFlash();
         }
 
         if (stormFlash && stormElapsed - stormFlash.startedAt >= stormFlash.duration) {
@@ -614,17 +636,25 @@ function AsciiField() {
       }
 
       const flashRadius = Math.min(width, height) * 0.26;
-      const flashRadiusSquared = flashRadius * flashRadius;
-      const flashProgress = stormFlash
-        ? Math.min(1, (stormElapsed - stormFlash.startedAt) / stormFlash.duration)
-        : 0;
-      const primaryFlash = stormFlash ? Math.sin(Math.PI * Math.min(1, flashProgress / 0.48)) : 0;
-      const echoProgress = stormFlash ? clamp((flashProgress - stormFlash.echoDelay) / (1 - stormFlash.echoDelay), 0, 1) : 0;
-      const flashEnvelope = stormFlash
-        ? Math.min(1, primaryFlash * 0.92 + Math.sin(Math.PI * echoProgress) * stormFlash.echoStrength)
-        : 0;
-      const flashX = stormFlash ? stormFlash.x * width : 0;
-      const flashY = stormFlash ? stormFlash.y * height : 0;
+      activeStormNodes.length = 0;
+      if (stormFlash) {
+        for (const node of stormFlash.nodes) {
+          const rawProgress = (stormElapsed - stormFlash.startedAt - node.delay) / node.duration;
+          if (rawProgress <= 0 || rawProgress >= 1) continue;
+
+          const progress = clamp(rawProgress, 0, 1);
+          const envelope = smoothStep(Math.sin(Math.PI * progress)) * node.strength;
+          if (envelope <= 0) continue;
+
+          const radius = flashRadius * node.radiusScale;
+          activeStormNodes.push({
+            x: node.x * width,
+            y: node.y * height,
+            radiusSquared: radius * radius,
+            envelope,
+          });
+        }
+      }
       const stormFlow = stormElapsed * (Math.PI * 2 / 9_000);
       const stormCrossFlow = stormElapsed * (Math.PI * 2 / 13_000);
       const now = performance.now();
@@ -655,15 +685,15 @@ function AsciiField() {
             let trail = 0;
             let flash = 0;
 
-            if (flashEnvelope > 0 && flashRadiusSquared > 0) {
-              const dx = x - flashX;
-              const dy = y - flashY;
+            for (const stormNode of activeStormNodes) {
+              const dx = x - stormNode.x;
+              const dy = y - stormNode.y;
               const distanceSquared = dx * dx + dy * dy;
 
-              if (distanceSquared < flashRadiusSquared) {
-                const falloff = 1 - distanceSquared / flashRadiusSquared;
+              if (distanceSquared < stormNode.radiusSquared) {
+                const falloff = 1 - distanceSquared / stormNode.radiusSquared;
                 const cloudAffinity = Math.max(0, Math.min(1, (value - 0.12) / 0.38));
-                flash = falloff * falloff * flashEnvelope * cloudAffinity;
+                flash = Math.max(flash, falloff * falloff * stormNode.envelope * cloudAffinity);
               }
             }
 
@@ -715,7 +745,7 @@ function AsciiField() {
           }
         }
 
-        drawGranularDots(parallaxX, parallaxY, flashEnvelope, flashRadiusSquared, flashX, flashY);
+        drawGranularDots(parallaxX, parallaxY, activeStormNodes);
       }
 
       context.globalAlpha = 1;
