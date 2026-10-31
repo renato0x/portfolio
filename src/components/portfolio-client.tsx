@@ -323,8 +323,9 @@ function AsciiField() {
     let contentMaskZones: Array<{ left: number; top: number; right: number; bottom: number; strength: number; feather: number }> = [];
     let time = 0;
     let stormElapsed = 0;
-    let nextStormFlashAt = 18_000 + Math.random() * 10_000;
-    let stormFlash: { x: number; y: number; startedAt: number; duration: number } | null = null;
+    const nextStormInterval = () => 5_500 + Math.random() * 4_500;
+    let nextStormFlashAt = nextStormInterval();
+    let stormFlash: { x: number; y: number; startedAt: number; duration: number; echoDelay: number; echoStrength: number } | null = null;
     let frame = 0;
     let width = 0;
     let height = 0;
@@ -407,7 +408,23 @@ function AsciiField() {
       return wave * 0.68 + grain * 0.32;
     };
 
-    const drawGranularDots = (parallaxX: number, parallaxY: number) => {
+    const getStormFront = (nx: number, ny: number, flow: number, crossFlow: number) => {
+      if (reduceMotion) return 0;
+
+      const primary = (Math.sin(nx * 3.1 + ny * 1.6 - flow) + 1) * 0.5;
+      const cross = (Math.sin(nx * -1.8 + ny * 4.8 + crossFlow + Math.sin(flow) * 0.58) + 1) * 0.5;
+      const filaments = (Math.sin(nx * 7.2 - ny * 2.4 + flow * 0.6 - crossFlow * 0.22) + 1) * 0.5;
+      return smoothStep(primary * 0.54 + cross * 0.31 + filaments * 0.15);
+    };
+
+    const drawGranularDots = (
+      parallaxX: number,
+      parallaxY: number,
+      flashEnvelope: number,
+      flashRadiusSquared: number,
+      flashX: number,
+      flashY: number,
+    ) => {
       const stepX = width < 760 ? 25 : 20;
       const stepY = width < 760 ? 24 : 20;
       const elapsedSeconds = stormElapsed / 1000;
@@ -434,12 +451,24 @@ function AsciiField() {
           const wave = sampleDotWave(renderedX, renderedY, elapsedSeconds);
           const maskedX = renderedX + wave.offsetX;
           const maskedY = renderedY + wave.offsetY;
+          let stormBoost = 0;
+
+          if (flashEnvelope > 0 && flashRadiusSquared > 0) {
+            const distanceSquared = (maskedX - flashX) ** 2 + (maskedY - flashY) ** 2;
+
+            if (distanceSquared < flashRadiusSquared) {
+              const falloff = 1 - distanceSquared / flashRadiusSquared;
+              stormBoost = falloff * falloff * flashEnvelope;
+            }
+          }
+
           const alpha =
             (0.12 + pulse * 0.17) *
             smoothStep(edgeDistance / 74) *
             contentMask(maskedX, maskedY) *
             wave.opacity *
-            localFade;
+            localFade *
+            (1 + stormBoost * 0.42);
           if (alpha < 0.04) continue;
 
           context.globalAlpha = Math.min(0.32, alpha);
@@ -455,7 +484,7 @@ function AsciiField() {
       let centerY = height * 0.5;
       let bestScore = -Infinity;
 
-      for (let sample = 0; sample < 16; sample += 1) {
+      for (let sample = 0; sample < 28; sample += 1) {
         const x = width * (0.16 + Math.random() * 0.68);
         const y = height * (0.16 + Math.random() * 0.68);
         const nx = (x / width - 0.5) * 2;
@@ -463,7 +492,7 @@ function AsciiField() {
         const radius = Math.hypot(nx, ny);
         if (radius >= 1.45) continue;
 
-        const score = getFieldValue(x, y, nx, ny) - Math.max(0, radius - 0.8) * 0.18;
+        const score = getFieldValue(x, y, nx, ny) + contentMask(x, y) * 0.26 - Math.max(0, radius - 0.8) * 0.18;
         if (score > bestScore) {
           bestScore = score;
           centerX = x;
@@ -572,22 +601,32 @@ function AsciiField() {
           stormFlash = {
             ...center,
             startedAt: stormElapsed,
-            duration: 300 + Math.random() * 200,
+            duration: 520 + Math.random() * 300,
+            echoDelay: 0.24 + Math.random() * 0.12,
+            echoStrength: 0.36 + Math.random() * 0.14,
           };
         }
 
         if (stormFlash && stormElapsed - stormFlash.startedAt >= stormFlash.duration) {
           stormFlash = null;
-          nextStormFlashAt = stormElapsed + 18_000 + Math.random() * 10_000;
+          nextStormFlashAt = stormElapsed + nextStormInterval();
         }
       }
 
-      const flashRadius = Math.min(width, height) * 0.16;
+      const flashRadius = Math.min(width, height) * 0.26;
       const flashRadiusSquared = flashRadius * flashRadius;
       const flashProgress = stormFlash
         ? Math.min(1, (stormElapsed - stormFlash.startedAt) / stormFlash.duration)
         : 0;
-      const flashEnvelope = stormFlash ? Math.sin(Math.PI * flashProgress) : 0;
+      const primaryFlash = stormFlash ? Math.sin(Math.PI * Math.min(1, flashProgress / 0.48)) : 0;
+      const echoProgress = stormFlash ? clamp((flashProgress - stormFlash.echoDelay) / (1 - stormFlash.echoDelay), 0, 1) : 0;
+      const flashEnvelope = stormFlash
+        ? Math.min(1, primaryFlash * 0.92 + Math.sin(Math.PI * echoProgress) * stormFlash.echoStrength)
+        : 0;
+      const flashX = stormFlash ? stormFlash.x * width : 0;
+      const flashY = stormFlash ? stormFlash.y * height : 0;
+      const stormFlow = stormElapsed * (Math.PI * 2 / 9_000);
+      const stormCrossFlow = stormElapsed * (Math.PI * 2 / 13_000);
       const now = performance.now();
       while (wake.length && now - wake[0].time > 1050) wake.shift();
       let wakeLeft = Infinity;
@@ -612,12 +651,13 @@ function AsciiField() {
             const ny = (y / height - 0.5) * 2;
             const radius = Math.hypot(nx, ny);
             const value = getFieldValue(x, y, nx, ny);
+            const stormFront = getStormFront(nx, ny, stormFlow, stormCrossFlow);
             let trail = 0;
             let flash = 0;
 
-            if (stormFlash && flashEnvelope > 0 && flashRadiusSquared > 0) {
-              const dx = x - stormFlash.x * width;
-              const dy = y - stormFlash.y * height;
+            if (flashEnvelope > 0 && flashRadiusSquared > 0) {
+              const dx = x - flashX;
+              const dy = y - flashY;
               const distanceSquared = dx * dx + dy * dy;
 
               if (distanceSquared < flashRadiusSquared) {
@@ -651,29 +691,31 @@ function AsciiField() {
               }
             }
 
-            const threshold = 0.36 - trail * 0.25 - flash * 0.065;
+            const threshold = 0.36 - trail * 0.25 - stormFront * 0.052 - flash * 0.12;
 
             if ((value > threshold || trail > 0.08) && radius < 1.45) {
-              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + trail * 1.05 + flash * 0.12));
+              const density = Math.max(0, Math.min(1, (value - threshold) / (1 - threshold) + trail * 1.05 + stormFront * 0.08 + flash * 0.22));
               const depth = 0.42 + (1 - Math.min(radius, 1)) * 0.72;
               const offsetX = Math.round(-parallaxX * depth * 4);
               const offsetY = Math.round(-parallaxY * depth * 3);
               const pulsePhase = (stormElapsed / 7_000) * Math.PI * 2 + nx * 2.6 - ny * 1.8;
               const pulse = reduceMotion ? 0 : (Math.sin(pulsePhase) + 1) * 0.5;
-              const alpha = 0.06 + Math.max(0, value - threshold) * 0.12 + trail * 0.68 + pulse * 0.025 + flash * 0.085;
+              const alpha = 0.06 + Math.max(0, value - threshold) * 0.12 + trail * 0.68 + stormFront * 0.08 + pulse * 0.035 + flash * 0.18;
+              const renderedX = x + offsetX;
+              const renderedY = y + offsetY;
 
-              context.globalAlpha = Math.min(0.72, alpha);
+              context.globalAlpha = Math.min(0.72, alpha) * contentMask(renderedX, renderedY);
               context.fillStyle = "#e7e7e7";
               context.fillText(
                 chars[Math.floor(density * (chars.length - 1))],
-                x + offsetX + 16,
-                y + offsetY + 16,
+                renderedX + 16,
+                renderedY + 16,
               );
             }
           }
         }
 
-        drawGranularDots(parallaxX, parallaxY);
+        drawGranularDots(parallaxX, parallaxY, flashEnvelope, flashRadiusSquared, flashX, flashY);
       }
 
       context.globalAlpha = 1;
@@ -691,7 +733,7 @@ function AsciiField() {
       reduceMotion = event.matches;
       if (reduceMotion) {
         stormFlash = null;
-        nextStormFlashAt = stormElapsed + 18_000 + Math.random() * 10_000;
+        nextStormFlashAt = stormElapsed + nextStormInterval();
         clearWake();
         resetParallax();
       }
