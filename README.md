@@ -1,45 +1,21 @@
-# Portfólio — Renato Monteiro
+# renato0x
 
-Portfólio pessoal de uma página, feito com Next.js, React, TypeScript, Tailwind CSS e Motion.
+Um espaço pessoal para projetos, estudos e experimentos na web.
 
-## Desenvolvimento local
+[Visitar o site ↗](https://renatoox.vercel.app/)
 
-```bash
-npm install
-npm run dev
-```
+---
 
-Abra [http://localhost:3000](http://localhost:3000).
+## Sobre
 
-## Verificação e produção
+O site reúne alguns projetos e também serve como espaço para testar ideias de interface, detalhes visuais e novas formas de organizar o que está sendo feito.
 
-```bash
-npm run typecheck
-npm run build
-npm start
-```
+## Visual
 
-O cartão consulta a Spotify Web API; se ela estiver indisponível, tenta a presença do Discord via Lanyard. A última faixa válida — incluindo a capa — é mantida no Vercel Blob. Se ainda não houver nenhuma faixa registrada, o cartão permanece vazio.
+A interface parte de referências ASCII, com fundo escuro, fonte monoespaçada e elementos simples. É uma estética de que gosto e que combina com a proposta de manter tudo mais direto e sem excesso.
 
-## Conectar o Spotify
+## O que tem por aqui?
 
-1. No painel do Spotify Developer, confirme que esta Redirect URI está cadastrada no app:
+Há projetos, tecnologias que aparecem no caminho, a música que está tocando e links para outros lugares.
 
-   ```text
-   http://127.0.0.1:3000/callback
-   ```
-
-2. Confirme que a conta do Spotify que autoriza é a conta cuja reprodução deve aparecer no portfólio.
-3. Com a CLI da Vercel autenticada e este diretório ligado ao projeto `portfolio`, execute:
-
-   ```bash
-   npm run spotify:connect
-   ```
-
-O fluxo PKCE salva o refresh token como variável de produção sensível na Vercel, mantém uma cópia local ignorada pelo Git e publica uma nova implantação. O app solicita as permissões `user-read-currently-playing` e `user-read-recently-played`. O access token se renova automaticamente. A presença do Discord continua como alternativa. Execute o comando novamente se a autorização for revogada ou se for necessário conceder novos escopos.
-
-## Persistir a última faixa
-
-No projeto da Vercel, abra **Storage**, crie um banco **Blob** com acesso **Public** e conecte-o ao projeto. A Vercel adicionará `BLOB_READ_WRITE_TOKEN` automaticamente às variáveis de ambiente.
-
-A rota salva em `portfolio/spotify-last-track.json` somente o título, artista e URL HTTPS da capa. Quando Spotify e Discord não tiverem uma reprodução disponível, ela devolve esse registro persistido. Para testar localmente, execute `vercel env pull` após criar o Blob.
+O site continua em construção e vai mudando conforme surgem novas ideias e experimentos.
