@@ -21,6 +21,7 @@ type Track = {
   source: TrackSource;
 };
 
+const profileDisplayName = "Renato Monteiro";
 const profileAlias = "renato0x";
 
 type Project = {
@@ -984,7 +985,8 @@ export default function PortfolioClient() {
   });
   const [track, setTrack] = useState<Track | null>(null);
   const [failedCover, setFailedCover] = useState<string | null>(null);
-  const [isProfileAliasVisible, setIsProfileAliasVisible] = useState(false);
+  const [profileName, setProfileName] = useState(profileDisplayName);
+  const [isProfileNameTransitioning, setIsProfileNameTransitioning] = useState(false);
   const currentCopy = copy[language];
 
   useEffect(() => {
@@ -1014,12 +1016,18 @@ export default function PortfolioClient() {
     const scheduleAliasGlitch = () => {
       timeout = window.setTimeout(() => {
         if (cancelled) return;
-        setIsProfileAliasVisible(true);
+        setProfileName(profileAlias);
+        setIsProfileNameTransitioning(true);
 
         timeout = window.setTimeout(() => {
           if (cancelled) return;
-          setIsProfileAliasVisible(false);
-          scheduleAliasGlitch();
+          setProfileName(profileDisplayName);
+
+          timeout = window.setTimeout(() => {
+            if (cancelled) return;
+            setIsProfileNameTransitioning(false);
+            scheduleAliasGlitch();
+          }, 700);
         }, 4_000);
       }, 12_000 + Math.random() * 12_000);
     };
@@ -1295,9 +1303,10 @@ export default function PortfolioClient() {
               />
               <div className="profile-details">
                 <span className="profile-name-wrap">
-                  {isProfileAliasVisible
+                  {isProfileNameTransitioning
                     ? <EncryptedText
-                        text={profileAlias}
+                        key={profileName}
+                        text={profileName}
                         className="profile-name"
                         encryptedClassName="text-neutral-500"
                         revealedClassName="text-white"
