@@ -23,6 +23,7 @@ type Track = {
 
 const profileDisplayName = "Renato Monteiro";
 const profileAlias = "renato0x";
+const pageTitle = "renato0x";
 
 type Project = {
   name: ProjectName;
@@ -105,7 +106,7 @@ const projects: Project[] = [
 
 const copy: Record<Language, PageCopy> = {
   pt: {
-    title: "Renato Monteiro",
+    title: pageTitle,
     content: "Conteúdo do portfólio",
     about: "Sobre renato0x",
     bio: "Sou Renato, Tenho 18 anos e curso Análise e Desenvolvimento de Sistemas no IFNMG, em Montes Claros. Já estou no meu terceiro curso na área de desenvolvimento de sistemas. Desde cedo, sou curioso sobre tecnologia e sempre quis entender como as coisas funcionam. Aprendi muito na prática: fuçando computadores, experimentando programação e seguindo cada dúvida até encontrar uma resposta. Ainda estou descobrindo meu espaço na área, mas gosto justamente desse processo — testar, errar e, aos poucos, entender o que acontece por trás da tela.",
@@ -130,7 +131,7 @@ const copy: Record<Language, PageCopy> = {
     viaDiscord: "via Discord",
   },
   en: {
-    title: "Renato Monteiro",
+    title: pageTitle,
     content: "Portfolio content",
     about: "About renato0x",
     bio: "I’m Renato, I'm 18, studying Systems Analysis and Development at IFNMG in Montes Claros. I'm now on my third course in systems development. I've been curious about technology for as long as I can remember, always wanting to understand how things work. I've learned a lot by doing: tinkering with computers, trying out programming, and following each question until I find an answer. I'm still figuring out where I fit in the field, but I enjoy the process: trying things, making mistakes, and gradually understanding what's happening behind the screen.",
@@ -1004,8 +1005,8 @@ export default function PortfolioClient() {
 
   useEffect(() => {
     document.documentElement.lang = language === "en" ? "en" : "pt-BR";
-    document.title = currentCopy.title;
-  }, [currentCopy.title, language]);
+    document.title = pageTitle;
+  }, [language]);
 
   useEffect(() => {
     if (reduceMotion) return;
