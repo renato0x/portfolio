@@ -7,22 +7,26 @@
 +------------------------------+
 ```
 
-Um espaço pessoal para projetos, estudos e experimentos na web.
+Site pessoal com uma breve apresentação, projetos e links de contato. Também é um espaço para testar ideias de interface e explorar uma estética de que gosto.
 
 [Visitar o site ↗](https://renatoox.vercel.app/)
 
 ---
 
-## Sobre
+## ASCII e movimento
 
-O site reúne alguns projetos e também serve como espaço para testar ideias de interface, detalhes visuais e novas formas de organizar o que está sendo feito.
+A referência ASCII vem de uma preferência pessoal. O visual combina fundo escuro, tons de cinza e tipografia monoespaçada nos detalhes, seguindo uma proposta mais minimalista.
 
-## Visual
+O fundo é desenhado em canvas, com caracteres que formam ondas lentas e deixam um rastro ao passar o cursor. O Motion suaviza o deslocamento do fundo conforme o mouse se move, criando um leve efeito de parallax.
 
-A interface parte de referências ASCII, com fundo escuro, fonte monoespaçada e elementos simples. É uma estética de que gosto e que combina com a proposta de manter tudo mais direto e sem excesso.
+Nos cards, uma iluminação acompanha o cursor. Na troca entre português e inglês, os textos passam por um efeito de caracteres embaralhados antes de formar o novo conteúdo.
 
-## O que tem por aqui?
+## Música com Spotify e Discord
 
-Há projetos, tecnologias que aparecem no caminho, a música que está tocando e links para outros lugares.
+O cartão de música usa a API oficial do Spotify para mostrar o que estou ouvindo, com nome da faixa, artista e capa. Se a consulta falhar, tenta buscar essa informação pela presença do Spotify no Discord, via Lanyard.
 
-O site continua em construção e vai mudando conforme surgem novas ideias e experimentos.
+Quando não há reprodução ativa, o cartão pode mostrar a última faixa ouvida. A última faixa válida também fica salva para continuar aparecendo quando as consultas estiverem indisponíveis.
+
+## Projetos e dados do GitHub
+
+Cada projeto tem uma breve descrição e um link para seu repositório. Os cards consultam a API do GitHub para exibir as estrelas e a quantidade de commits meus em cada um deles.
