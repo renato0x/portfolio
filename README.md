@@ -19,7 +19,7 @@ npm run build
 npm start
 ```
 
-O cartão consulta a Spotify Web API; se ela estiver indisponível, tenta a presença do Discord via Lanyard. Sem reprodução, mantém “heart pt. 6”, de Kendrick Lamar.
+O cartão consulta a Spotify Web API; se ela estiver indisponível, tenta a presença do Discord via Lanyard. A última faixa válida — incluindo a capa — é mantida no Vercel Blob. Se ainda não houver nenhuma faixa registrada, o cartão permanece vazio.
 
 ## Conectar o Spotify
 
@@ -36,4 +36,10 @@ O cartão consulta a Spotify Web API; se ela estiver indisponível, tenta a pres
    npm run spotify:connect
    ```
 
-O fluxo PKCE salva o refresh token como variável de produção sensível na Vercel, mantém uma cópia local ignorada pelo Git e publica uma nova implantação. O app solicita a permissão `user-read-currently-playing`. O access token se renova automaticamente; o refresh token expira após 180 dias. A presença do Discord continua como alternativa e “heart pt. 6” como fallback. Execute o comando novamente para reautorizar quando necessário.
+O fluxo PKCE salva o refresh token como variável de produção sensível na Vercel, mantém uma cópia local ignorada pelo Git e publica uma nova implantação. O app solicita as permissões `user-read-currently-playing` e `user-read-recently-played`. O access token se renova automaticamente. A presença do Discord continua como alternativa. Execute o comando novamente se a autorização for revogada ou se for necessário conceder novos escopos.
+
+## Persistir a última faixa
+
+No projeto da Vercel, abra **Storage**, crie um banco **Blob** com acesso **Public** e conecte-o ao projeto. A Vercel adicionará `BLOB_READ_WRITE_TOKEN` automaticamente às variáveis de ambiente.
+
+A rota salva em `portfolio/spotify-last-track.json` somente o título, artista e URL HTTPS da capa. Quando Spotify e Discord não tiverem uma reprodução disponível, ela devolve esse registro persistido. Para testar localmente, execute `vercel env pull` após criar o Blob.

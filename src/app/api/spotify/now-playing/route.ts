@@ -1,5 +1,9 @@
+import { head, put } from "@vercel/blob";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const storedTrackPath = "portfolio/spotify-last-track.json";
 
 type SpotifyTokenResponse = {
   access_token?: string;
@@ -21,6 +25,12 @@ type SpotifyItem = {
 
 type SpotifyRecentlyPlayedResponse = {
   items?: Array<{ track?: SpotifyItem | null }>;
+};
+
+type StoredTrack = {
+  title: string;
+  artist: string;
+  cover: string;
 };
 
 type LanyardResponse = {
@@ -74,10 +84,66 @@ async function getDiscordFallback() {
   }
 }
 
+function isStoredTrack(value: unknown): value is StoredTrack {
+  if (typeof value !== "object" || value === null) return false;
+  const track = value as Record<string, unknown>;
+  return (
+    typeof track.title === "string" &&
+    typeof track.artist === "string" &&
+    typeof track.cover === "string" &&
+    track.cover.startsWith("https://")
+  );
+}
+
+function blobIsConfigured() {
+  return typeof process.env.BLOB_READ_WRITE_TOKEN === "string" && process.env.BLOB_READ_WRITE_TOKEN.length > 0;
+}
+
+async function getStoredTrack() {
+  if (!blobIsConfigured()) return null;
+
+  try {
+    const blob = await head(storedTrackPath);
+    const response = await fetch(blob.url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!response.ok) return null;
+
+    const payload: unknown = await response.json();
+    return isStoredTrack(payload) ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveTrack(track: StoredTrack) {
+  if (!blobIsConfigured()) return;
+
+  try {
+    await put(storedTrackPath, JSON.stringify(track), {
+      access: "public",
+      allowOverwrite: true,
+      cacheControlMaxAge: 60,
+      contentType: "application/json; charset=utf-8",
+    });
+  } catch {
+    // A storage outage must not hide the live Spotify result.
+  }
+}
+
+async function storedOrNoContent() {
+  const storedTrack = await getStoredTrack();
+  if (storedTrack) {
+    return Response.json({ ...storedTrack, source: "stored" }, { headers: responseHeaders });
+  }
+  return noContent();
+}
+
 async function fallbackOrNoContent() {
   const discordTrack = await getDiscordFallback();
   if (discordTrack) return Response.json(discordTrack, { headers: responseHeaders });
-  return noContent();
+  return storedOrNoContent();
 }
 
 function trackPayload(item: SpotifyItem | null | undefined, source: "spotify" | "recent") {
@@ -104,7 +170,10 @@ async function recentOrFallback(token: string) {
     if (response.ok) {
       const payload = (await response.json()) as SpotifyRecentlyPlayedResponse;
       const recentTrack = trackPayload(payload.items?.[0]?.track, "recent");
-      if (recentTrack) return Response.json(recentTrack, { headers: responseHeaders });
+      if (recentTrack) {
+        await saveTrack(recentTrack);
+        return Response.json(recentTrack, { headers: responseHeaders });
+      }
     }
   } catch {
     // Try Discord presence if Spotify's recent history is unavailable.
@@ -113,7 +182,7 @@ async function recentOrFallback(token: string) {
   const discordTrack = await getDiscordFallback();
   if (discordTrack) return Response.json(discordTrack, { headers: responseHeaders });
 
-  return noContent();
+  return storedOrNoContent();
 }
 
 async function getAccessToken(forceRefresh = false): Promise<string | null> {
@@ -207,7 +276,10 @@ export async function GET() {
 
   if (playback.is_playing === true) {
     const currentTrack = trackPayload(playback.item, "spotify");
-    if (currentTrack) return Response.json(currentTrack, { headers: responseHeaders });
+    if (currentTrack) {
+      await saveTrack(currentTrack);
+      return Response.json(currentTrack, { headers: responseHeaders });
+    }
   }
 
   return recentOrFallback(token);

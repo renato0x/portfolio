@@ -12,7 +12,7 @@ import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 type Language = "pt" | "en";
 type ProjectName = "CashPad" | "Transcrypty" | "SUB-SEEMG";
-type TrackSource = "spotify" | "discord" | "recent" | "cached";
+type TrackSource = "spotify" | "discord" | "recent" | "stored" | "cached";
 
 type Track = {
   title: string;
@@ -1092,7 +1092,7 @@ export default function PortfolioClient() {
           typeof value.artist !== "string" ||
           typeof value.cover !== "string" ||
           !value.cover.startsWith("https:") ||
-          (value.source !== "spotify" && value.source !== "discord" && value.source !== "recent")
+          (value.source !== "spotify" && value.source !== "discord" && value.source !== "recent" && value.source !== "stored")
         ) {
           setTrack((current) => current ? { ...current, source: "cached" } : null);
           return;
